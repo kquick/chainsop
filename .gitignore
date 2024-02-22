@@ -1,0 +1,12 @@
+_darcs/
+.boring
+.cmd_history
+*~
+target/
+
+
+# Added by cargo
+
+/target
+/Cargo.lock
+/proptest-regressions
