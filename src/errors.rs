@@ -7,7 +7,7 @@ use crate::filehandling::defs::FileArg;
 
 
 #[derive(thiserror::Error,Debug)]
-pub enum SubProcError {
+pub enum ChainsopError {
 
     #[error("Missing file for operation")]
     ErrorMissingFile,

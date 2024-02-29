@@ -100,7 +100,7 @@ impl SubProcOperation {
         let inpfiles;
         let outfile;
         let missing_file_err = ||
-            Err(anyhow::Error::new(SubProcError::ErrorMissingFile));
+            Err(anyhow::Error::new(ChainsopError::ErrorMissingFile));
         let errctxt = |w| move || format!("Setting {} file for {:?}", w, self.exec);
 
         // Note: order of file specification is important below because
@@ -239,20 +239,20 @@ impl SubProcOperation {
             Good => Ok(outfile),
             RunError(e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorExecuting(format!("{:?}", self.exec),
+                    ChainsopError::ErrorExecuting(format!("{:?}", self.exec),
                                                  args, e, fromdir))),
             ExecFailed(e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorCmdSetup(format!("{:?}", self.exec),
+                    ChainsopError::ErrorCmdSetup(format!("{:?}", self.exec),
                                                 args, e, fromdir))),
             ExecError(c,s) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorRunningCmd(
+                    ChainsopError::ErrorRunningCmd(
                         format!("{:?}", self.exec), args,
                         c, fromdir, s))),
             BadDirectory(p,e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorBadDirectory(
+                    ChainsopError::ErrorBadDirectory(
                         format!("{:?}", self.exec), p, e))),
         }
     }

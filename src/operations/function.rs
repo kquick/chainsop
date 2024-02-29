@@ -89,22 +89,22 @@ impl FunctionOperation {
             Good => Ok(outfile),
             ExecFailed(e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorCmdSetup(format!("{:?}", self),
+                    ChainsopError::ErrorCmdSetup(format!("{:?}", self),
                                                 Vec::new(), e,
                                                 fromdir))),
             RunError(e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorExecuting(format!("{:?}", self),
+                    ChainsopError::ErrorExecuting(format!("{:?}", self),
                                                  Vec::new(), e,
                                                  fromdir))),
             ExecError(c,s) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorRunningCmd(
+                    ChainsopError::ErrorRunningCmd(
                         format!("{:?}", self), Vec::new(),
                         c, fromdir, s))),
             BadDirectory(p,e) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorBadDirectory(
+                    ChainsopError::ErrorBadDirectory(
                         format!("{:?}", self), p, e))),
         }
     }

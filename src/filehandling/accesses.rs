@@ -2,7 +2,7 @@ use std::ffi::{OsString};
 use std::path::{Path, PathBuf};
 use anyhow;
 
-use crate::errors::SubProcError;
+use crate::errors::ChainsopError;
 use crate::filehandling::defs::*;
 use crate::execution::OsRun;
 
@@ -41,10 +41,10 @@ impl ActualFile {
         match self {
             ActualFile::SingleFile(fref) => Ok(Self::get_path(cwd, fref)),
             ActualFile::NoActualFile =>
-                Err(anyhow::Error::new(SubProcError::ErrorMissingFile)),
+                Err(anyhow::Error::new(ChainsopError::ErrorMissingFile)),
             ActualFile::MultiFile(_) =>
                 Err(anyhow::Error::new(
-                    SubProcError::ErrorUnsupportedActualFile(
+                    ChainsopError::ErrorUnsupportedActualFile(
                         format!("{:?}", self)))),
         }
     }
@@ -75,7 +75,7 @@ impl ActualFile {
             ActualFile::MultiFile(pbs) =>
                 Ok(pbs.iter().map(|p| Self::get_path(cwd, p)).collect()),
             ActualFile::NoActualFile =>
-                Err(anyhow::Error::new(SubProcError::ErrorMissingFile)),
+                Err(anyhow::Error::new(ChainsopError::ErrorMissingFile)),
         }
     }
 
@@ -255,7 +255,7 @@ mod tests {
             // using the DryRun executor
             match setup_file(&mut DryRun, &nfile,
                              || Err (anyhow::Error::new(
-                                 SubProcError::ErrorMissingFile))) {
+                                 ChainsopError::ErrorMissingFile))) {
                 Ok(df) => match nfile {
                     FileArg::GlobIn(_,_) => prop_assert_eq!(num_files(&df), 0),
                     _ => prop_assert_eq!(num_files(&df), 1),

@@ -460,8 +460,8 @@ where P: AsRef<Path>,
                 }
             }
         }
-        Err(e) => match &e.root_cause().downcast_ref::<SubProcError>() {
-            Some(SubProcError::ErrorMissingFile) => {
+        Err(e) => match &e.root_cause().downcast_ref::<ChainsopError>() {
+            Some(ChainsopError::ErrorMissingFile) => {
                 // This is OK here because the following operation may be setup
                 // for not needing an input file specification; if it does need
                 // one then presumably some subsequent runtime check will
