@@ -8,5 +8,4 @@ target/
 # Added by cargo
 
 /target
-/Cargo.lock
 /proptest-regressions
