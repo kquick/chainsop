@@ -1,0 +1,21 @@
+[package]
+name = "chainsop"
+version = "0.1.0"
+description = "Library to facilitate executing a chained series of executable operations."
+authors = ["Kevin Quick <kq1quick@gmail.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+# homepage
+# repository
+# documentation
+
+[dependencies]
+anyhow = "^1"
+glob = "0.3"
+lazy_static = "1"
+tempfile = "3.1"
+thiserror = "= 1.0.39"  # 1.0.40 or above requires syn 2
+filesprep_derive = { path = "src/filehandling/filesprep_derive" }
+
+[dev-dependencies]
+proptest = "1.0.0"

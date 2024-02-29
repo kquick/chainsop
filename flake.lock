@@ -1,0 +1,633 @@
+{
+  "nodes": {
+    "anyhow-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-2L7HPgorCyns2riuGUvvJVytEHdhBEpqvANg4x6U15g=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/anyhow/1.0.80/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/anyhow/1.0.80/download"
+      }
+    },
+    "autocfg-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-hBIYVtsjTAwHzhoGL1qv6yk7C0HeCo60kV3dogBwB+c=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/autocfg/1.1.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/autocfg/1.1.0/download"
+      }
+    },
+    "bit-set-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-CFfHGlW4AHgdoILmcmZfHylohq1ESmivrxuZfpr/K78=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bit-set/0.5.3/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bit-set/0.5.3/download"
+      }
+    },
+    "bit-vec-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-Bzw7X2DSGGHqMX2erhemi7ceeftVHtRWUnGI8fTlVGI=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bit-vec/0.6.3/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bit-vec/0.6.3/download"
+      }
+    },
+    "bitflags-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-RwE3WB5kpY+jWZTCBNa9GT6+/2yhRg+gdrqPo2TYpJo=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bitflags/2.4.2/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/bitflags/2.4.2/download"
+      }
+    },
+    "cfg-if-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-lGzSOlapIF6YsJKn0hN4jV2vRpxiQLFeYlZrK/uUk+I=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/cfg-if/1.0.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/cfg-if/1.0.0/download"
+      }
+    },
+    "errno-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-ORT5DfyaKRMk44PJVc9gSriZ/5FUhpWPlxa5M0v5VJM=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/errno/0.3.8/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/errno/0.3.8/download"
+      }
+    },
+    "fastrand-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-heempAy6k6TEdF75u/COpYVMavZfl/Ue0eGL5bvabIc=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/fastrand/2.0.1/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/fastrand/2.0.1/download"
+      }
+    },
+    "fnv-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-nVKuxVieKY4k9COBrdeW8BQP0koYdT8Zdqm2JHJqql4=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/fnv/1.0.7/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/fnv/1.0.7/download"
+      }
+    },
+    "getrandom-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-l27fe+WvWZu6dx+9xEijcKv7q/J4PDXuVu5q9ARCCEM=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/getrandom/0.2.12/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/getrandom/0.2.12/download"
+      }
+    },
+    "glob-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-GnBLsNmuZfF/6Z2B8RjU4kR/Pp4QSFHKBVJ9oyQbzUk=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/glob/0.3.1/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/glob/0.3.1/download"
+      }
+    },
+    "lazy_static-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-74Ls7MyXpIQeVi8Yl9/2zXGmg5W6ZcBJaLrGXEwd+1g=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/lazy_static/1.4.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/lazy_static/1.4.0/download"
+      }
+    },
+    "levers": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1687557470,
+        "narHash": "sha256-T0TAGZPiI5cwWR2OMLVYW7aj3Aco7v8qIVF7JoEgO9Y=",
+        "owner": "kquick",
+        "repo": "nix-levers",
+        "rev": "0e31d80978a9fb6a96df0722aa298d008a57c53e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kquick",
+        "repo": "nix-levers",
+        "type": "github"
+      }
+    },
+    "libc-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-FAXvv0YoYdpwAEqr1ju5CmaPJAoEQRExw8QyeJr27nc=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/libc/0.2.153/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/libc/0.2.153/download"
+      }
+    },
+    "libm-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-PVcN+AdMoLCvk6ZcvzmbhU7+ncApG9uL8hcbJfL3V7I=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/libm/0.2.8/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/libm/0.2.8/download"
+      }
+    },
+    "linux-raw-sys-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-wGDICDNVU+n0AsgMVVWR/qRObLyM6rpykTR4W/M655k=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/linux-raw-sys/0.4.13/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/linux-raw-sys/0.4.13/download"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1701282334,
+        "narHash": "sha256-MxCVrXY6v4QmfTwIysjjaX0XUhqBbxTWWB4HXtDYsdk=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "057f9aecfb71c4437d2b27d3323df7f93c010b7e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "23.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "num-traits-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-qKUkW9WFcBVw5wEWstVlM+3WP8HG+N0/vHYdLql+SMc=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/num-traits/0.2.18/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/num-traits/0.2.18/download"
+      }
+    },
+    "ppv-lite86-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-7GhhKciz2Xg62sztvYLJPtNbr7eP4gx0DSsUn3tg4PA=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/ppv-lite86/0.2.17/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/ppv-lite86/0.2.17/download"
+      }
+    },
+    "proc-macro2-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-8M91swP6dLkVKdqzLrDMrDRgNs72bXv2S5EMmhBdErg=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/proc-macro2/1.0.78/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/proc-macro2/1.0.78/download"
+      }
+    },
+    "proptest-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-tMXl3p3K8ON1HZlOgm1Huk7oeWMxgoI5eXE+BTX9M8Q=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/proptest/1.4.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/proptest/1.4.0/download"
+      }
+    },
+    "quick-error-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-6C2G6TX1B3wIMLBT8DJx8KbfndiNh3zC3UCRkFfph6I=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/quick-error/1.2.3/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/quick-error/1.2.3/download"
+      }
+    },
+    "quote-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-71xSOlZ8AcLWA35htG+WCaosxUEOOABmuf8itOY6Ucs=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/quote/1.0.35/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/quote/1.0.35/download"
+      }
+    },
+    "rand-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-XBwr+YrVuXBavNOuOPBq5n2fyiLiMK3gatpx1i39LRs=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand/0.8.5/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand/0.8.5/download"
+      }
+    },
+    "rand_chacha-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-lQmPQXkIldwQu4xfq0F3mN0dSOryVTHIjilB45r13Zo=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_chacha/0.3.1/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_chacha/0.3.1/download"
+      }
+    },
+    "rand_core-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-Ul+Vecpb53IrkaaDM7Jx2w52I0EL3cTR/V1CNALWrEw=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_core/0.6.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_core/0.6.4/download"
+      }
+    },
+    "rand_xorshift-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-n+i/9vKYcl0JfIApYBSQxhQJXnCv2vO3St6vsrnUozU=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_xorshift/0.3.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rand_xorshift/0.3.0/download"
+      }
+    },
+    "regex-syntax-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-7rqPQh9hxA/iMclyM7J9YXRcHiXXIsWWfHHff4UTmgU=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/regex-syntax/0.8.2/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/regex-syntax/0.8.2/download"
+      }
+    },
+    "root": {
+      "inputs": {
+        "anyhow-src": "anyhow-src",
+        "autocfg-src": "autocfg-src",
+        "bit-set-src": "bit-set-src",
+        "bit-vec-src": "bit-vec-src",
+        "bitflags-src": "bitflags-src",
+        "cfg-if-src": "cfg-if-src",
+        "errno-src": "errno-src",
+        "fastrand-src": "fastrand-src",
+        "fnv-src": "fnv-src",
+        "getrandom-src": "getrandom-src",
+        "glob-src": "glob-src",
+        "lazy_static-src": "lazy_static-src",
+        "levers": "levers",
+        "libc-src": "libc-src",
+        "libm-src": "libm-src",
+        "linux-raw-sys-src": "linux-raw-sys-src",
+        "nixpkgs": "nixpkgs",
+        "num-traits-src": "num-traits-src",
+        "ppv-lite86-src": "ppv-lite86-src",
+        "proc-macro2-src": "proc-macro2-src",
+        "proptest-src": "proptest-src",
+        "quick-error-src": "quick-error-src",
+        "quote-src": "quote-src",
+        "rand-src": "rand-src",
+        "rand_chacha-src": "rand_chacha-src",
+        "rand_core-src": "rand_core-src",
+        "rand_xorshift-src": "rand_xorshift-src",
+        "regex-syntax-src": "regex-syntax-src",
+        "rustix-src": "rustix-src",
+        "rusty-fork-src": "rusty-fork-src",
+        "syn-src": "syn-src",
+        "tempfile-src": "tempfile-src",
+        "thiserror-impl-src": "thiserror-impl-src",
+        "thiserror-src": "thiserror-src",
+        "unarray-src": "unarray-src",
+        "unicode-ident-src": "unicode-ident-src",
+        "wait-timeout-src": "wait-timeout-src",
+        "wasi-src": "wasi-src",
+        "windows-sys-src": "windows-sys-src",
+        "windows-targets-src": "windows-targets-src",
+        "windows_aarch64_gnullvm-src": "windows_aarch64_gnullvm-src",
+        "windows_aarch64_msvc-src": "windows_aarch64_msvc-src",
+        "windows_i686_gnu-src": "windows_i686_gnu-src",
+        "windows_i686_msvc-src": "windows_i686_msvc-src",
+        "windows_x86_64_gnu-src": "windows_x86_64_gnu-src",
+        "windows_x86_64_gnullvm-src": "windows_x86_64_gnullvm-src",
+        "windows_x86_64_msvc-src": "windows_x86_64_msvc-src"
+      }
+    },
+    "rustix-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-bar6C8mFupkfFaUYQT2k21csI6GEr3DqAbdd2Se3+I8=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rustix/0.38.31/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rustix/0.38.31/download"
+      }
+    },
+    "rusty-fork-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-xMy6Y05axhkqxySV5DTegt7e6Du6gaTXXY2DjlBATyg=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rusty-fork/0.3.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/rusty-fork/0.3.0/download"
+      }
+    },
+    "syn-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-hn4hzvZ1yaPqn2Zdapr2eY7yuDfm0m7wN/2orcrpTMc=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/syn/1.0.109/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/syn/1.0.109/download"
+      }
+    },
+    "tempfile-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-hEvbYk6r55KsZjTo8xg6YGa3GPzMSJAsNGEGqY5qaHs=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/tempfile/3.10.1/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/tempfile/3.10.1/download"
+      }
+    },
+    "thiserror-impl-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-m/pBIwvFqpzGi05vv0D1ygXEC7OHiLXgXavYazYUfxg=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/thiserror-impl/1.0.39/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/thiserror-impl/1.0.39/download"
+      }
+    },
+    "thiserror-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-jh6S6buHgAziA/UczMCQwXa1CK46j3b9IoInRGbDIzc=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/thiserror/1.0.39/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/thiserror/1.0.39/download"
+      }
+    },
+    "unarray-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-uY+6NyvVKBr3tb3mj1Q0TEzr333ftAfkqKA5SfW1/7s=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/unarray/0.1.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/unarray/0.1.4/download"
+      }
+    },
+    "unicode-ident-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-Qmen0zDJN7SK4/epWa9pp8DUsKlEaFClBPsP+TrI9XE=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/unicode-ident/1.0.12/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/unicode-ident/1.0.12/download"
+      }
+    },
+    "wait-timeout-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-F7p3PG+sLBBOyErjOrXlD3YrQcsV1DOZg1qp7b4gMMY=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/wait-timeout/0.2.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/wait-timeout/0.2.0/download"
+      }
+    },
+    "wasi-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-zxW3r1984AE5H+Pr2A8psjjF9dRayA+hea81myvGqis=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/wasi/0.11.0%2Bwasi-snapshot-preview1/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/wasi/0.11.0%2Bwasi-snapshot-preview1/download"
+      }
+    },
+    "windows-sys-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-FbKnSU6ce400OQNSLxaEBWHijzOOgMHJk5ZeLZ/C7uU=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows-sys/0.52.0/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows-sys/0.52.0/download"
+      }
+    },
+    "windows-targets-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-fr//dA2uOb8vgPTnuSn88OOwNVCIbUyRgXztHl1KySA=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows-targets/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows-targets/0.52.4/download"
+      }
+    },
+    "windows_aarch64_gnullvm-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-ZvuwgP/d3Cd2QVIquGV+WSi3AGZxBx7VK3iOdGM6+cU=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_aarch64_gnullvm/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_aarch64_gnullvm/0.52.4/download"
+      }
+    },
+    "windows_aarch64_msvc-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-E27LFudBrQGAlOQ55oE2RdCF61jx8iW+XSJxMtCD/Io=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_aarch64_msvc/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_aarch64_msvc/0.52.4/download"
+      }
+    },
+    "windows_i686_gnu-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-sIKR5MFKuaL1TxfRdLxBFYJkMLMdpjpfbzD1nhcvMJs=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_i686_gnu/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_i686_gnu/0.52.4/download"
+      }
+    },
+    "windows_i686_msvc-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-Tqp8w+cPeAPZZNA/JSV6L7dC9M4ddLk280dIIBeHCAA=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_i686_msvc/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_i686_msvc/0.52.4/download"
+      }
+    },
+    "windows_x86_64_gnu-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-A8sdmBE0L6aQmDlChwM33s1UdbUTQjg8emF4B9Z+nJk=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_gnu/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_gnu/0.52.4/download"
+      }
+    },
+    "windows_x86_64_gnullvm-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-H6u2lIehsZt0jIPsUOt+qw5/EntfSdZ42GSH0dg2Jds=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_gnullvm/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_gnullvm/0.52.4/download"
+      }
+    },
+    "windows_x86_64_msvc-src": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-mwYoDy73K/Bzqha3rglTfWXns8OaXxZb7wg9IkKE2j0=",
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_msvc/0.52.4/download"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://crates.io/api/v1/crates/windows_x86_64_msvc/0.52.4/download"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
