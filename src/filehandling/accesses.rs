@@ -1,5 +1,9 @@
+use std::cell::RefCell;
 use std::ffi::{OsString};
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use anyhow;
 
 use crate::errors::ChainsopError;
@@ -57,7 +61,7 @@ impl ActualFile {
         };
         match fref {
             FileRef::StaticFile(pb) => tgt.join(pb),
-            FileRef::TempFile(tf) => tgt.join(tf.path()),
+            FileRef::TempFile(tf) => tgt.join(tf.borrow().path()),
         }
     }
 
@@ -78,6 +82,48 @@ impl ActualFile {
         }
     }
 
+
+    /// Called to obtain an object for the ActualFile implementing the
+    /// [std::io::Read] trait.  If there is no ActualFile, this returns an object
+    /// that will always read 0 bytes.  If there are multiple ActualFile files,
+    /// this provides read access to only the first file.
+    pub fn readable(&self) -> std::io::Result<CAFl> {
+        self.cafl()
+    }
+
+    /// Called to obtain an object for the ActualFile implementing the
+    /// [std::io::Write] trait.  If there is no ActualFile, this returns an
+    /// object that will always discard written output.  If there are multiple
+    /// ActualFile files, this outputs data to only the first file.
+    pub fn writeable(&self) -> std::io::Result<CAFl> {
+        self.cafl()
+    }
+
+    fn cafl(&self) -> std::io::Result<CAFl> {
+        match self {
+            ActualFile::NoActualFile => Ok(CAFl::AD),
+            ActualFile::SingleFile(FileRef::StaticFile(pb)) =>
+                Ok(CAFl::AF(Rc::new(RefCell::new(File::options()
+                                                 .create(true).append(true)
+                                                 .open(pb)?)))),
+            ActualFile::SingleFile(FileRef::TempFile(tf)) =>
+                Ok(CAFl::AT(tf.clone())),
+            ActualFile::MultiFile(mf) =>
+                if mf.is_empty() {
+                   Ok(CAFl::AD) // no input files: no input
+                } else {
+                    match &mf[0] {
+                        FileRef::StaticFile(pb) =>
+                            Ok(CAFl::AF(Rc::new(RefCell::new(File::options()
+                                                             .create(true)
+                                                             .append(true)
+                                                             .open(pb)?)))),
+
+                        FileRef::TempFile(tf) => Ok(CAFl::AT(tf.clone())),
+                    }
+                },
+        }
+    }
 }
 
 /// Resolves a FileSpec and insert the actual named file into the argument
@@ -94,7 +140,7 @@ where E: Fn() -> anyhow::Result<ActualFile>,
         FileArg::TBD => on_missing(),
         FileArg::Temp(sfx) => {
             let tf = executor.mk_tempfile(sfx)?;
-            Ok(ActualFile::SingleFile(FileRef::TempFile(tf)))
+            Ok(ActualFile::SingleFile(FileRef::TempFile(Rc::new(RefCell::new(tf)))))
         }
         FileArg::Loc(fpath) => {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(fpath.clone())))
@@ -130,6 +176,39 @@ where Do: FnMut(&Vec<PathBuf>) -> anyhow::Result<()>,
     let glob_files = executor.glob_search(&globpat)?;
     do_with(&glob_files)
 }
+
+
+impl Read for CAFl {
+
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            CAFl::AD => Ok(0),  // discards output: /dev/null
+            CAFl::AF(rf) => rf.borrow_mut().read(buf),
+            CAFl::AT(tf) => tf.borrow_mut().read(buf),
+        }
+    }
+
+}
+
+impl Write for CAFl {
+
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self {
+            CAFl::AD => Ok(0),  // discards output: /dev/null
+            CAFl::AF(rf) => rf.borrow_mut().write(buf),
+            CAFl::AT(tf) => tf.borrow_mut().write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self {
+            CAFl::AD => Ok(()),
+            CAFl::AF(rf) => rf.borrow_mut().flush(),
+            CAFl::AT(tf) => tf.borrow_mut().flush(),
+        }
+    }
+}
+
 
 // ----------------------------------------------------------------------
 // TESTS

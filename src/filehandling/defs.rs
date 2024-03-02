@@ -1,4 +1,7 @@
+use std::cell::RefCell;
+use std::fs::File;
 use std::path::{Path,PathBuf};
+use std::rc::Rc;
 use tempfile;
 
 
@@ -174,5 +177,18 @@ pub enum FileRef {
 
     /// References a temporary file, which will cease to exist when this value is
     /// garbage collected.
-    TempFile(tempfile::NamedTempFile)
+    TempFile(Rc<RefCell<tempfile::NamedTempFile>>)
+}
+
+
+// This is the internal proxy object that provides std::io::Read and
+// std::io::Write capabilities to (the first file in) an ActualFile.  It is
+// public only in that it must be declared as a return value from
+// [ActualFile::readable] and [ActualFile::writeable], but it is not exported
+// from chainsop as a whole and the user can do nothing else with these objects
+// except use them with their Read or Write trait methods.
+pub enum CAFl {
+    AD,
+    AF(Rc<RefCell<File>>),
+    AT(Rc<RefCell<tempfile::NamedTempFile>>),
 }

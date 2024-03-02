@@ -358,7 +358,7 @@ mod tests {
         assert!(
             match result {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
-                    tf.path().exists(),
+                    tf.borrow().path().exists(),
                 _ => false
             }, "Unexpected result: {:?}", result);
         let mut collected = executor.0.into_inner();
