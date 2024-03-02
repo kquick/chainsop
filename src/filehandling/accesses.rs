@@ -56,10 +56,9 @@ impl ActualFile {
             None => {}
         };
         match fref {
-            FileRef::StaticFile(pb) => tgt.push(pb),
-            FileRef::TempFile(tf) => tgt.push(tf.path()),
-        };
-        tgt
+            FileRef::StaticFile(pb) => tgt.join(pb),
+            FileRef::TempFile(tf) => tgt.join(tf.path()),
+        }
     }
 
     /// Gets the list of Paths (one or more) associated with a ActualFile or

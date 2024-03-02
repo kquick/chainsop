@@ -246,14 +246,14 @@ mod tests {
 
         // Re-run op to make sure it can be re-used
         let mut ex2 = CallCollector::new();
-        let result2 = execute_here(&mut op, &mut ex2);
+        let result2 = op.execute(&mut ex2, &Some("/place"));
         assert!(
             match result2 {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
                     tf.path().exists(),
                 _ => false
             }, "Unexpected result: {:?}", result2);
-        let collected2 = ex2.0.borrow().clone();
+        let mut collected2 = ex2.0.borrow().clone();
         assert_eq!(collected2.len(), 1);
         assert_eq!(collected2[0].fname, "f1");
         assert!(
@@ -261,8 +261,39 @@ mod tests {
                 Some(pb) => pb.exists() && pb != out1,
                 _ => false
             }, "Unexpected outfiles: {:?}", collected2[0].outfile);
-        ex2.0.borrow_mut()[0].outfile = None;
+        collected2[0].outfile = None;
 
-        assert_eq!(executor, ex2);
+        assert_eq!(collected2,
+                   vec![ RunFunc { fname: "f1".into(),
+                                   inpfiles: vec![PathBuf::from("inpfile.txt")],
+                                   outfile: None,
+                                   dir: Some("/place".into()),
+                                   },
+                   ]);
+    }
+
+    #[test]
+    fn test_func_with_files_and_subdir() -> () {
+        let mut op = FunctionOperation::calling("f2", test_callee)
+            .set_input_file(&FileArg::loc("inpfile.txt"))
+            .set_output_file(&FileArg::loc("f2.out"))
+            .set_dir("sub")
+            .clone();
+
+        let mut executor = CallCollector::new();
+        let result = execute_here(&mut op, &mut executor);
+        match result {
+            Ok(ActualFile::SingleFile(FileRef::StaticFile(ref tf))) =>
+                assert_eq!(tf, &PathBuf::from("f2.out")),
+            _ => ()
+        };
+        let collected = executor.0.clone().into_inner();
+        assert_eq!(collected,
+                   vec![ RunFunc { fname: "f2".into(),
+                                   inpfiles: vec![PathBuf::from("inpfile.txt")],
+                                   outfile: Some("f2.out".into()),
+                                   dir: Some("sub".into()),
+                                   },
+                   ]);
     }
 }

@@ -3,7 +3,7 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::ffi::{OsString};
 use std::fmt;
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::RwLock;
 
@@ -405,31 +405,30 @@ impl OpInterface for ChainedOps
                 chops.chain[first_op].add_input_file(f);
             }
         }
-        match chops.files.in_dir.clone() {
-            Some(d) => {
-                chops.chain[first_op].set_dir(d);
+        let tgtdir = match cwd {
+            None => chops.files.in_dir.clone(),
+            Some(d) =>
+                match &chops.files.in_dir {
+                    Some(od) => Some(d.as_ref().join(od)),
+                    None => Some(d.as_ref().into()),
             }
-            None => {}
-        }
+        };
         if chops.files.has_explicit_output_file() {
             let main_out_file = chops.files.out_filename.clone();
             chops.chain[last_op].set_output_file(&main_out_file);
         }
 
         let pinp = chops.preset_inputs.clone();
-        execute_chain(executor, &mut chops.chain, &pinp, cwd,
+        execute_chain(executor, &mut chops.chain, &pinp, &tgtdir,
                       &mut enabled_opidxs)
     }
 }
 
-fn execute_chain<Exec, P>(executor: &Exec,
-                          chops: &mut Vec<RunnableOp>,
-                          preset_inputs: &Vec<usize>,
-                          cwd: &Option<P>,
-                          mut op_idxs: &mut Vec<usize>)
-                          -> anyhow::Result<ActualFile>
-where P: AsRef<Path>,
-      Exec: OsRun
+fn execute_chain(executor: &impl OsRun,
+                 chops: &mut Vec<RunnableOp>,
+                 preset_inputs: &Vec<usize>,
+                 cwd: &Option<PathBuf>,
+                 mut op_idxs: &mut Vec<usize>) -> anyhow::Result<ActualFile>
 {
     let op_idx = op_idxs.pop().unwrap();
     let spo = &mut chops[op_idx];
@@ -438,7 +437,7 @@ where P: AsRef<Path>,
         // This was the last operation, execution of the chain is completed.
         return Ok(outfile);
     }
-    match outfile.to_paths(cwd).with_context(
+    match outfile.to_paths::<PathBuf>(&None).with_context(
         || format!("Output file for chained operation {}", spo.label()))
     {
         Ok(mut ps) => {
@@ -633,6 +632,9 @@ mod tests {
     // * [TC17] Verify function ViaCall (function-specified) op output file
     // * [TC18] Verify closure ViaCall (function-specified) op output file
     // * [TC19] Verify Loc (explicitly specified) op output file
+    // * [TC20] Verify chained ops set_dir does not affect filenames
+    // * [TC21] Absolute chain directory overrides execute directory
+    // * [TC22] Absolute chain directory combines with relative op directory
 
     use super::*;
     use std::cell::RefCell;
@@ -1131,6 +1133,7 @@ mod tests {
     #[test]
     fn test_chain_op_settings() -> anyhow::Result<()> {
         let mut ops = ChainedOps::new("test chain");
+        ops.set_dir("/ops/run/here");  // [TC20], [TC14]
             // [TC10]
         let exe = Executable::new(&"test-cmd",
                                   ExeFileSpec::Append,
@@ -1156,6 +1159,14 @@ mod tests {
                                   .push_arg("-D")
                                   .push_arg("DVAL")
         );
+        ops.push_call(&FunctionOperation::calling(
+            "fop",
+            |_in_dir, _inpfiles, _outfile| todo!("not called during test")))
+            .set_output_file(&FileArg::loc("fop.done"));
+        ops.push_call(&FunctionOperation::calling(
+            "flop",
+            |_in_dir, _inpfiles, _outfile| todo!("not called during test")))
+            .set_output_file(&FileArg::loc("flop.done"));
         ops.push_op(SubProcOperation::new(
             &Executable::new(&"cmdexe3",
                              ExeFileSpec::Option("--input".into()),
@@ -1186,7 +1197,6 @@ mod tests {
         };
 
         let mut collected = ex.0.into_inner();
-        assert_eq!(collected.len(), 3);
 
         // The last arg of the first op is an assigned output tempfile
         let output0_tmpfile = match &mut collected[0] {
@@ -1231,9 +1241,9 @@ mod tests {
             }
         };
 
-        // The output file of the third (and last) op should be as specified by
+        // The output file of the fifth (and last) op should be as specified by
         // the individual op.
-        match &mut collected[2] {
+        match &mut collected[4] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert_eq!(outf, PathBuf::from("final.out"));  // [TC10]
@@ -1243,54 +1253,51 @@ mod tests {
                 outf
             }
             TestOp::FO(_) => {
-                panic!("Expected second op to be a SubProcOperation");
+                panic!("Expected fifth op to be a SubProcOperation");
             }
         };
 
-        // The penultimate arg of the third (and last) op should be the input
-        // tempfile, which should be the output tempfile of the previous op
-        match &mut collected[2] {
-            TestOp::SPO(re) => {
-                let inpf = PathBuf::from(&re.args[re.args.len()-2]);
-                assert_eq!(inpf, output1_tmpfile);  // [TC3]
-                let outf = re.args.clone().last().unwrap().clone();
-                re.args.pop();  // remove output filespec
-                re.args.pop();  // remove input file
-                re.args.push(outf.clone()); // re-add output filespec
-                outf
-            }
-            TestOp::FO(_) => {
-                panic!("Expected second op to be a SubProcOperation");
-            }
-        };
-
-        assert_eq!(collected,
-                   vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
-                                               exe: "test-cmd".into(),
-                                               args: ["-a",
-                                                      "a-arg-value",
-                                                      "-b",
-                                                      "inpfile.txt",  // [TC10]
-                                                      // output file removed above
-                                               ].map(Into::<OsString>::into).to_vec(),
-                                               dir: Some(PathBuf::from("target/loc"))}),
-                         TestOp::SPO(RunExec { name: "cmd2".into(),
-                                               exe: "cmd2".into(),
-                                               args: ["-D",
-                                                      "DVAL",
-                                                      "--input",
-                                                      // input file removed above
-                                                      // output file removed above
-                                               ].map(Into::<OsString>::into).to_vec(),
-                                               dir: Some(PathBuf::from("target/loc/sub/dir"))}),
-                         TestOp::SPO(RunExec { name: "cmdexe3".into(),
-                                               exe: "cmdexe3".into(),
-                                               args: ["--input",
-                                                      // input file removed above
-                                                      "final.out",   // [TC10]
-                                               ].map(Into::<OsString>::into).to_vec(),
-                                               dir: Some(PathBuf::from("/abs/dir"))}),
-                   ]);
+        assert_eq!(
+            collected, vec!
+                [
+                    TestOp::SPO(RunExec { name: "test-cmd".into(),
+                                          exe: "test-cmd".into(),
+                                          args: ["-a",
+                                                 "a-arg-value",
+                                                 "-b",
+                                                 "inpfile.txt",  // [TC10]
+                                                 // output file removed above
+                                          ].map(Into::<OsString>::into).to_vec(),
+                                          dir: Some(PathBuf::from("/ops/run/here"))}), // [TC20]
+                    TestOp::SPO(RunExec { name: "cmd2".into(),
+                                          exe: "cmd2".into(),
+                                          args: ["-D",
+                                                 "DVAL",
+                                                 "--input",
+                                                 // input file removed above
+                                                 // output file removed above
+                                          ].map(Into::<OsString>::into).to_vec(),
+                                          dir: Some(PathBuf::from("/ops/run/here/sub/dir"))}), // [TC22]
+                    TestOp::FO(RunFunc { fname: "fop".to_string(),
+                                         inpfiles: vec![
+                                             output1_tmpfile
+                                         ],
+                                         outfile: Some(PathBuf::from("fop.done")),
+                                         dir: Some("/ops/run/here".into()) }), // [TC21]
+                    TestOp::FO(RunFunc { fname: "flop".to_string(),
+                                         inpfiles: vec![
+                                             "fop.done".into(), // [TC20]
+                                         ],
+                                         outfile: Some(PathBuf::from("flop.done")),
+                                         dir: Some("/ops/run/here".into()) }), // [TC21]
+                    TestOp::SPO(RunExec { name: "cmdexe3".into(),
+                                          exe: "cmdexe3".into(),
+                                          args: ["--input",
+                                                 "flop.done",   // [TC20]
+                                                 "final.out",   // [TC10]
+                                          ].map(Into::<OsString>::into).to_vec(),
+                                          dir: Some(PathBuf::from("/abs/dir"))}),
+                ]);
         Ok(())
     }
 
