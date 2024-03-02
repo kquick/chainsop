@@ -13,6 +13,8 @@ use crate::execution::OsRun;
 
 impl ActualFile {
 
+    /// This combines two ActualFile objects into a single ActualFile that
+    /// references the full set of files referenced by the original two objects.
     pub fn extend(self, more: ActualFile) -> ActualFile
     {
         match self {
