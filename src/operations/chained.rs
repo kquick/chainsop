@@ -1106,7 +1106,7 @@ mod tests {
         ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
 
         let mut ex = TestCollector::new();
-        let result = execute_here(&mut ops, &mut ex);
+        let result = ops.execute_here(&mut ex);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 assert_eq!(sf, PathBuf::from("real-out")), // [TC6]
@@ -1323,7 +1323,7 @@ mod tests {
         ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
 
         let mut ex = TestCollector::new();
-        let result = execute_here(&mut ops, &mut ex);
+        let result = ops.execute_here(&mut ex);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 assert_eq!(sf, PathBuf::from("real-out")), // [TC6]

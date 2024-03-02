@@ -78,13 +78,12 @@ pub trait OpInterface {
     fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
         where P: AsRef<Path>, Exec: OsRun;
-}
 
-/// Convenience routine to execute an operation with a given [crate::Executor] in
-/// the current directory.
-pub fn execute_here<Op, Exec>(op: &mut Op, executor: &Exec)
-                              -> anyhow::Result<ActualFile>
-where Exec: OsRun, Op: OpInterface
-{
-    op.execute(executor, &None::<PathBuf>)
+
+    /// Convenience method to execute an operation with a given [crate::Executor]
+    /// in the current directory.
+    fn execute_here(&mut self, executor: &impl OsRun) -> anyhow::Result<ActualFile>
+    {
+        self.execute(executor, &None::<PathBuf>)
+    }
 }

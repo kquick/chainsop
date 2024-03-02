@@ -218,7 +218,7 @@ mod tests {
             .clone();
 
         let mut executor = CallCollector::new();
-        let result = execute_here(&mut op, &mut executor);
+        let result = op.execute_here(&mut executor);
         assert!(
             match result {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
@@ -281,7 +281,7 @@ mod tests {
             .clone();
 
         let mut executor = CallCollector::new();
-        let result = execute_here(&mut op, &mut executor);
+        let result = op.execute_here(&mut executor);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(ref tf))) =>
                 assert_eq!(tf, &PathBuf::from("f2.out")),

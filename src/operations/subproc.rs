@@ -354,7 +354,7 @@ mod tests {
             .clone();
 
         let mut executor = ArgCollector::new();
-        let result = execute_here(&mut op, &mut executor);
+        let result = op.execute_here(&mut executor);
         assert!(
             match result {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>

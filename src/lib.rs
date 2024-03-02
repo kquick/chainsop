@@ -450,7 +450,7 @@ pub use errors::*;
 #[doc(inline)]
 pub use executable::{Executable, ExeFileSpec};
 #[doc(inline)]
-pub use operations::generic::{OpInterface, execute_here};
+pub use operations::generic::{OpInterface};
 #[doc(inline)]
 pub use operations::subproc::SubProcOperation;
 #[doc(inline)]
