@@ -353,8 +353,8 @@ mod tests {
             .push_arg("-b")
             .clone();
 
-        let mut executor = ArgCollector::new();
-        let result = op.execute_here(&mut executor);
+        let executor = ArgCollector::new();
+        let result = op.execute_here(&executor);
         assert!(
             match result {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
@@ -395,8 +395,8 @@ mod tests {
             .push_arg("-b")
             .clone();
 
-        let mut executor = ArgCollector::new();
-        let result = op.execute(&mut executor, &Some("/other/location"));
+        let executor = ArgCollector::new();
+        let result = op.execute(&executor, &Some("/other/location"));
         assert!(match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(p))) =>
                 p == PathBuf::from("outfile.out"),
@@ -418,8 +418,8 @@ mod tests {
                    }]);
 
         // Re-run op to make sure it can be re-used
-        let mut exec2 = ArgCollector::new();
-        let result2 = op.execute(&mut exec2, &Some("loc"));
+        let exec2 = ArgCollector::new();
+        let result2 = op.execute(&exec2, &Some("loc"));
         assert!(match result2 {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(p))) =>
                 p == PathBuf::from("outfile.out"),
@@ -451,8 +451,8 @@ mod tests {
             .clone();
         op.set_executable(&"simple");
 
-        let mut executor = ArgCollector::new();
-        let result = op.execute(&mut executor, &None::<PathBuf>);
+        let executor = ArgCollector::new();
+        let result = op.execute(&executor, &None::<PathBuf>);
         assert!(match result {
             Ok(ActualFile::NoActualFile) => true,
             _ => false

@@ -217,8 +217,8 @@ mod tests {
             .set_output_file(&FileArg::temp(".out"))
             .clone();
 
-        let mut executor = CallCollector::new();
-        let result = op.execute_here(&mut executor);
+        let executor = CallCollector::new();
+        let result = op.execute_here(&executor);
         assert!(
             match result {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
@@ -245,8 +245,8 @@ mod tests {
                    ]);
 
         // Re-run op to make sure it can be re-used
-        let mut ex2 = CallCollector::new();
-        let result2 = op.execute(&mut ex2, &Some("/place"));
+        let ex2 = CallCollector::new();
+        let result2 = op.execute(&ex2, &Some("/place"));
         assert!(
             match result2 {
                 Ok(ActualFile::SingleFile(FileRef::TempFile(ref tf))) =>
@@ -280,8 +280,8 @@ mod tests {
             .set_dir("sub")
             .clone();
 
-        let mut executor = CallCollector::new();
-        let result = op.execute_here(&mut executor);
+        let executor = CallCollector::new();
+        let result = op.execute_here(&executor);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(ref tf))) =>
                 assert_eq!(tf, &PathBuf::from("f2.out")),

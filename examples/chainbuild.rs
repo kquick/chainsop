@@ -56,8 +56,8 @@ fn build_ops() -> ChainedOps
 
 fn build(ops: &mut ChainedOps) -> anyhow::Result<()>
 {
-    let mut executor = Executor::DryRun;
-    ops.execute(&mut executor, &Some("/home/user/myapp-src"))?;
+    let executor = Executor::DryRun;
+    ops.execute(&executor, &Some("/home/user/myapp-src"))?;
     Ok(())
 }
 

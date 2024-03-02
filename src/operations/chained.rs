@@ -799,8 +799,8 @@ mod tests {
         );
         op5.push_arg("op").set_dir(".build");  // [TC13]
 
-        let mut xor = TestCollector::new();
-        let result = ops.execute(&mut xor, &Some("target/loc"));
+        let xor = TestCollector::new();
+        let result = ops.execute(&xor, &Some("target/loc"));
         assert!(match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 sf == PathBuf::from("final.out"),
@@ -935,8 +935,8 @@ mod tests {
         // -------------------------------------------------------------------
         // Execute the chainedops *again* to verify they can be re-used and are
         // actually executed again.
-        let mut xor2 = TestCollector::new();
-        let result2 = ops.execute(&mut xor2, &Some("/other"));  // [TC15]
+        let xor2 = TestCollector::new();
+        let result2 = ops.execute(&xor2, &Some("/other"));  // [TC15]
 
         assert!(match result2 {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
@@ -1073,8 +1073,8 @@ mod tests {
     fn test_chain_empty() -> anyhow::Result<()> {
         let mut ops = ChainedOps::new("test empty chain");
         // [TC1]
-        let mut ex = TestCollector::new();
-        let result = ops.execute(&mut ex, &Some("target/loc"));
+        let ex = TestCollector::new();
+        let result = ops.execute(&ex, &Some("target/loc"));
         match result {
             Ok(ActualFile::NoActualFile) => (),
             _ => assert!(false,
@@ -1105,8 +1105,8 @@ mod tests {
         ops.set_input_file(&FileArg::loc("real-in"));  // [TC8]
         ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
 
-        let mut ex = TestCollector::new();
-        let result = ops.execute_here(&mut ex);
+        let ex = TestCollector::new();
+        let result = ops.execute_here(&ex);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 assert_eq!(sf, PathBuf::from("real-out")), // [TC6]
@@ -1180,8 +1180,8 @@ mod tests {
         // No chain-level input or output files were set, so the individual
         // operation's settings should apply.  [TC10]
 
-        let mut ex = TestCollector::new();
-        let result = ops.execute(&mut ex, &Some("target/loc"));
+        let ex = TestCollector::new();
+        let result = ops.execute(&ex, &Some("target/loc"));
         match result {
             Ok(actual) => {
                 match actual {
@@ -1322,8 +1322,8 @@ mod tests {
         ops.set_input_file(&FileArg::loc("real-in"));  // [TC8]
         ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
 
-        let mut ex = TestCollector::new();
-        let result = ops.execute_here(&mut ex);
+        let ex = TestCollector::new();
+        let result = ops.execute_here(&ex);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 assert_eq!(sf, PathBuf::from("real-out")), // [TC6]
