@@ -26,18 +26,25 @@ use std::rc::Rc;
 use crate::filehandling::defs::*;
 
 
-/// The OsRun trait is used to define the interface to the Executor for
-/// operations that should be executed.  The default implementation of this trait
-/// will perform the specified actions on the current system.  The use of an
-/// Executor however allows the actual IO operations to be controlled and
-/// possibly even simulated or controlled for various purposes (e.g. testing, OS
-/// abstraction, etc.).
+/// The OsRun trait is used to define the interface to implementation that will
+/// perform operations that should be executed.  The default implementation of
+/// this trait is the [Executor] which will perform the specified actions on the
+/// current system.
+///
+/// The use of this abstraction however allows the actual IO operations to be
+/// controlled and possibly even simulated or controlled for various purposes
+/// (e.g. testing, OS abstraction, etc.) instead of using the default [Executor].
+///
+/// When used, an implementation of the OsRun object is expected to be immutable;
+/// if it needs to maintain internal state or make updates based on the
+/// operations performed, it should use an internal RefCell for those mutable
+/// portions.
 
 pub trait OsRun {
 
     /// Run the specified executable with the specified arguments.  The default
     /// (NormalRun) behaviour is to use Command to perform this execution.
-    fn run_executable(&mut self,
+    fn run_executable(&self,
                       label: &str,
                       exe_file: &Path,
                       args: &Vec<OsString>,
@@ -45,7 +52,7 @@ pub trait OsRun {
 
     /// Call the specified function with the specified file arguments.  The
     /// default (NormalRun) behaviour is to actually perform the call.
-    fn run_function(&mut self,
+    fn run_function(&self,
                     name : &str,
                     call : &Rc<dyn Fn(&Path, &ActualFile, &ActualFile) -> anyhow::Result<()>>,
                     inpfiles: &ActualFile,
@@ -55,7 +62,7 @@ pub trait OsRun {
     /// This function is called to perform a glob-style pattern match against a
     /// set of files.  The return is a vector of files that are found (when using
     /// the default NormalRun behavior).
-    fn glob_search(&mut self, globpat: &String) -> anyhow::Result<Vec<PathBuf>>;
+    fn glob_search(&self, globpat: &String) -> anyhow::Result<Vec<PathBuf>>;
 
     /// This function is called to create a temporary file (when performed using
     /// the default NormalRun executor).  Note that the return value is provided
@@ -67,7 +74,7 @@ pub trait OsRun {
     /// a tempfile is not intended to be a generally available resource and its
     /// existence is generally non-impactful to the system, it is relatively safe
     /// to allow the normal behavior even in simulation or testing scenarios.
-    fn mk_tempfile(&mut self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>;
+    fn mk_tempfile(&self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>;
 }
 
 /// The OsRunResult is the return value from the `run_executable` and
@@ -99,7 +106,7 @@ impl Executor {
 
 impl OsRun for Executor {
 
-    fn run_executable(&mut self,
+    fn run_executable(&self,
                       label: &str,
                       exe_file: &Path,
                       args: &Vec<OsString>,
@@ -152,7 +159,7 @@ impl OsRun for Executor {
         }
     }
 
-    fn run_function(&mut self,
+    fn run_function(&self,
                     name : &str,
                     call : &Rc<dyn Fn(&Path, &ActualFile, &ActualFile) -> anyhow::Result<()>>,
                     inpfiles: &ActualFile,
@@ -186,7 +193,7 @@ impl OsRun for Executor {
         }
     }
 
-    fn glob_search(&mut self, globpat: &String) -> anyhow::Result<Vec<PathBuf>>
+    fn glob_search(&self, globpat: &String) -> anyhow::Result<Vec<PathBuf>>
     {
         match &self {
             Executor::NormalRun |
@@ -197,7 +204,7 @@ impl OsRun for Executor {
         }
     }
 
-    fn mk_tempfile(&mut self, suffix: &String)
+    fn mk_tempfile(&self, suffix: &String)
                    -> anyhow::Result<tempfile::NamedTempFile>
     {
         match &self {

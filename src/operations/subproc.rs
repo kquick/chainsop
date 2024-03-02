@@ -77,7 +77,7 @@ impl SubProcOperation {
     /// the command.  This function is normally only used internally by the
     /// execute() operation, but it is exposed for testing purposes.
     fn finalize_args<Exec, P>(&self,
-                              executor: &mut Exec,
+                              executor: &Exec,
                               cwd: &Option<P>)
                               -> anyhow::Result<(Vec<OsString>,
                                                  (ActualFile, ActualFile))>
@@ -91,7 +91,7 @@ impl SubProcOperation {
     // Sets up file references for running a command.  Note that these are
     // relative to the cwd specified for this operation, which might not yet be
     // the current working directory.
-    fn cmd_file_setup<Exec, P>(&self, executor: &mut Exec,
+    fn cmd_file_setup<Exec, P>(&self, executor: &Exec,
                                args: &mut Vec<OsString>,
                                cwd: &Option<P>)
                                -> anyhow::Result<(ActualFile, ActualFile)>
@@ -169,7 +169,7 @@ impl SubProcOperation {
     /// object which will delete the file at the end of its lifetime, so the
     /// returned value should be held until the file is no longer needed.
     fn setup_exe_file<E, Exec, P>(&self,
-                                  executor: &mut Exec,
+                                  executor: &Exec,
                                   args: &mut Vec<OsString>,
                                   cwd: &Option<P>,
                                   spec: &ExeFileSpec,
@@ -218,7 +218,7 @@ impl SubProcOperation {
     /// documentation for `OpInterface::execute()` above for a description of the
     /// handling of the `cwd` parameter.
     fn run_cmd<Exec, P>(&self,
-                        executor: &mut Exec,
+                        executor: &Exec,
                         cwd: &Option<P>,
                         outfile : ActualFile,
                         args : Vec<OsString>)
@@ -268,7 +268,7 @@ impl OpInterface for SubProcOperation {
         self
     }
 
-    fn execute<Exec, P>(&mut self, executor: &mut Exec, cwd: &Option<P>)
+    fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
     where P: AsRef<Path>,
           Exec: OsRun
@@ -289,6 +289,7 @@ mod tests {
 
     use super::*;
     use crate::execution::*;
+    use std::cell::RefCell;
     use std::rc::Rc;
 
     #[derive(Debug, PartialEq)]
@@ -298,23 +299,29 @@ mod tests {
         args: Vec<OsString>,
         dir: Option<PathBuf>
     }
-    struct ArgCollector(Vec<RunExec>);
+    struct ArgCollector(RefCell<Vec<RunExec>>);
+    impl ArgCollector {
+        pub fn new() -> ArgCollector {
+            ArgCollector(RefCell::new(vec![]))
+        }
+    }
 
     impl OsRun for ArgCollector {
-        fn run_executable(&mut self,
+        fn run_executable(&self,
                           label: &str,
                           exe_file: &Path,
                           args: &Vec<OsString>,
                           fromdir: &Option<PathBuf>) -> OsRunResult
         {
-            self.0.push(RunExec{ name: String::from(label),
-                                 exe: PathBuf::from(exe_file),
-                                 args: args.clone(),
-                                 dir: fromdir.clone()
+            self.0.borrow_mut()
+                .push(RunExec{ name: String::from(label),
+                               exe: PathBuf::from(exe_file),
+                               args: args.clone(),
+                               dir: fromdir.clone()
             });
             Good
         }
-        fn run_function(&mut self,
+        fn run_function(&self,
                         name : &str,
                         _call : &Rc<dyn Fn(&Path, &ActualFile, &ActualFile) -> anyhow::Result<()>>,
                         _inpfiles: &ActualFile,
@@ -323,11 +330,11 @@ mod tests {
         {
             RunError(anyhow::anyhow!("run_function {} not implemented for ArgCollector", name))
         }
-        fn glob_search(&mut self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
+        fn glob_search(&self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
         {
             Err(anyhow::anyhow!("glob_search not implemented for ArgCollector"))
         }
-        fn mk_tempfile(&mut self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
+        fn mk_tempfile(&self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
         {
             Executor::DryRun.mk_tempfile(suffix)
         }
@@ -346,7 +353,7 @@ mod tests {
             .push_arg("-b")
             .clone();
 
-        let mut executor = ArgCollector(vec![]);
+        let mut executor = ArgCollector::new();
         let result = execute_here(&mut op, &mut executor);
         assert!(
             match result {
@@ -354,12 +361,13 @@ mod tests {
                     tf.path().exists(),
                 _ => false
             }, "Unexpected result: {:?}", result);
-        assert_eq!(executor.0.len(), 1);
+        let mut collected = executor.0.into_inner();
+        assert_eq!(collected.len(), 1);
         // The last arg is an assigned tempfile
-        let output_tmpfile = PathBuf::from(&executor.0[0].args.last().unwrap());
+        let output_tmpfile = PathBuf::from(&collected[0].args.last().unwrap());
         assert!(output_tmpfile.exists());
-        executor.0[0].args.pop();
-        assert_eq!(executor.0,
+        collected[0].args.pop();
+        assert_eq!(collected,
                    vec![ RunExec { name: "test-cmd".into(),
                                    exe: "test-cmd".into(),
                                    args: ["-a",
@@ -387,14 +395,15 @@ mod tests {
             .push_arg("-b")
             .clone();
 
-        let mut executor = ArgCollector(vec![]);
+        let mut executor = ArgCollector::new();
         let result = op.execute(&mut executor, &Some("/other/location"));
         assert!(match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(p))) =>
                 p == PathBuf::from("outfile.out"),
             _ => false
         });
-        assert_eq!(executor.0,
+        let collected = executor.0.into_inner();
+        assert_eq!(collected,
                    vec![ RunExec { name: "test-cmd".into(),
                                    exe: "test-cmd".into(),
                                    args: ["-a",
@@ -409,14 +418,15 @@ mod tests {
                    }]);
 
         // Re-run op to make sure it can be re-used
-        let mut exec2 = ArgCollector(vec![]);
+        let mut exec2 = ArgCollector::new();
         let result2 = op.execute(&mut exec2, &Some("loc"));
         assert!(match result2 {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(p))) =>
                 p == PathBuf::from("outfile.out"),
             _ => false
         });
-        assert_eq!(exec2.0,
+        let collected = exec2.0.into_inner();
+        assert_eq!(collected,
                    vec![ RunExec { name: "test-cmd".into(),
                                    exe: "test-cmd".into(),
                                    args: ["-a",
@@ -441,13 +451,14 @@ mod tests {
             .clone();
         op.set_executable(&"simple");
 
-        let mut executor = ArgCollector(vec![]);
+        let mut executor = ArgCollector::new();
         let result = op.execute(&mut executor, &None::<PathBuf>);
         assert!(match result {
             Ok(ActualFile::NoActualFile) => true,
             _ => false
         });
-        assert_eq!(executor.0,
+        let collected = executor.0.into_inner();
+        assert_eq!(collected,
                    vec![ RunExec { name: "simple".into(),
                                    exe: "simple".into(),
                                    args: ["-a",

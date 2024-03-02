@@ -83,7 +83,7 @@ impl OpInterface for RunnableOp {
         self
     }
 
-    fn execute<Exec, P>(&mut self, executor: &mut Exec, cwd: &Option<P>)
+    fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
     where P: AsRef<Path>, Exec: OsRun
     {
@@ -364,7 +364,7 @@ impl OpInterface for ChainedOps
     /// operate from a separate directory if the SubProcOperation::set_dir() or
     /// ChainedOpRef::set_dir() function has been called for this operation,
     /// which overrides the default directory passed to this command.
-    fn execute<Exec, P>(&mut self, executor: &mut Exec, cwd: &Option<P>)
+    fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
     where P: AsRef<Path>, Exec: OsRun
     {
@@ -422,7 +422,7 @@ impl OpInterface for ChainedOps
     }
 }
 
-fn execute_chain<Exec, P>(executor: &mut Exec,
+fn execute_chain<Exec, P>(executor: &Exec,
                           chops: &mut Vec<RunnableOp>,
                           preset_inputs: &Vec<usize>,
                           cwd: &Option<P>,
@@ -635,6 +635,7 @@ mod tests {
     // * [TC19] Verify Loc (explicitly specified) op output file
 
     use super::*;
+    use std::cell::RefCell;
     use std::path::PathBuf;
     use crate::executable::*;
     use crate::execution::*;
@@ -658,41 +659,48 @@ mod tests {
         SPO(RunExec),
         FO(RunFunc)
     }
-    struct TestCollector(Vec<TestOp>);
+    struct TestCollector(RefCell<Vec<TestOp>>);
+    impl TestCollector {
+        pub fn new() -> TestCollector {
+            TestCollector(RefCell::new(vec![]))
+        }
+    }
 
     impl OsRun for TestCollector {
-        fn run_executable(&mut self,
+        fn run_executable(&self,
                           label: &str,
                           exe_file: &Path,
                           args: &Vec<OsString>,
                           fromdir: &Option<PathBuf>) -> OsRunResult
         {
-            self.0.push(TestOp::SPO(RunExec{ name: String::from(label),
-                                             exe: PathBuf::from(exe_file),
-                                             args: args.clone(),
-                                             dir: fromdir.clone()
+            self.0.borrow_mut()
+                .push(TestOp::SPO(RunExec{ name: String::from(label),
+                                           exe: PathBuf::from(exe_file),
+                                           args: args.clone(),
+                                           dir: fromdir.clone()
             }));
             OsRunResult::Good
         }
-        fn run_function(&mut self,
+        fn run_function(&self,
                         name : &str,
                         _call : &Rc<dyn Fn(&Path, &ActualFile, &ActualFile) -> anyhow::Result<()>>,
                         inpfiles: &ActualFile,
                         outfile: &ActualFile,
                         fromdir: &Option<PathBuf>) -> OsRunResult
         {
-            self.0.push(TestOp::FO(RunFunc{ fname: name.to_string(),
-                                            inpfiles: inpfiles.to_paths::<PathBuf>(&None).unwrap(),
-                                            outfile: outfile.to_path::<PathBuf>(&None).ok(),
-                                            dir: fromdir.clone()
+            self.0.borrow_mut()
+                .push(TestOp::FO(RunFunc{ fname: name.to_string(),
+                                          inpfiles: inpfiles.to_paths::<PathBuf>(&None).unwrap(),
+                                          outfile: outfile.to_path::<PathBuf>(&None).ok(),
+                                          dir: fromdir.clone()
             }));
             OsRunResult::Good
         }
-        fn glob_search(&mut self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
+        fn glob_search(&self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
         {
             Err(anyhow::anyhow!("glob_search not implemented for ArgCollector"))
         }
-        fn mk_tempfile(&mut self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
+        fn mk_tempfile(&self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
         {
             Executor::DryRun.mk_tempfile(suffix)
         }
@@ -788,17 +796,18 @@ mod tests {
         );
         op5.push_arg("op").set_dir(".build");  // [TC13]
 
-        let mut xor = TestCollector(vec![]);
+        let mut xor = TestCollector::new();
         let result = ops.execute(&mut xor, &Some("target/loc"));
         assert!(match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
                 sf == PathBuf::from("final.out"),
             _ => false,
         });
-        assert_eq!(xor.0.len(), 4);
+        let mut collected = xor.0.into_inner();
+        assert_eq!(collected.len(), 4);
 
         // The last arg of the first op is an assigned output tempfile
-        let output0_tmpfile = match &mut xor.0[0] {
+        let output0_tmpfile = match &mut collected[0] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(), // [TC16]
@@ -815,7 +824,7 @@ mod tests {
 
         // The penultimate arg of the second op should be the input tempfile,
         // which should be the output tempfile of the previous op
-        match &mut xor.0[1] {
+        match &mut collected[1] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output0_tmpfile);
@@ -825,7 +834,7 @@ mod tests {
             }
         };
         // The last arg of the second op is another assigned output tempfile
-        let output1_tmpfile = match &mut xor.0[1] {
+        let output1_tmpfile = match &mut collected[1] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(), // [TC16]
@@ -844,7 +853,7 @@ mod tests {
         // The input file of the third op should be the tempfile output of the
         // second op, and the output file of the third op should be an assigned
         // tempfile.
-        let output2_tmpfile = match &mut xor.0[2] {
+        let output2_tmpfile = match &mut collected[2] {
             TestOp::SPO(_) => {
                 panic!("Expected third op to be a FunctionOperation");
             }
@@ -867,7 +876,7 @@ mod tests {
 
         // The penultimate arg of the third op should be the input tempfile,
         // which should be the output tempfile of the previous op
-        match &mut xor.0[3] {
+        match &mut collected[3] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output2_tmpfile);
@@ -882,7 +891,7 @@ mod tests {
             }
         };
 
-        assert_eq!(xor.0,
+        assert_eq!(collected,
                    vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
                                                exe: "test-cmd".into(),
                                                args: ["-a",
@@ -923,7 +932,7 @@ mod tests {
         // -------------------------------------------------------------------
         // Execute the chainedops *again* to verify they can be re-used and are
         // actually executed again.
-        let mut xor2 = TestCollector(vec![]);
+        let mut xor2 = TestCollector::new();
         let result2 = ops.execute(&mut xor2, &Some("/other"));  // [TC15]
 
         assert!(match result2 {
@@ -931,10 +940,11 @@ mod tests {
                 sf == PathBuf::from("final.out"),
             _ => false,
         });
-        assert_eq!(xor2.0.len(), 4);
+        let mut collected2 = xor2.0.into_inner();
+        assert_eq!(collected2.len(), 4);
 
         // The last arg of the first op is an assigned output tempfile
-        let output0_tmpfile2 = match &mut xor2.0[0] {
+        let output0_tmpfile2 = match &mut collected2[0] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(),
@@ -951,7 +961,7 @@ mod tests {
 
         // The penultimate arg of the second op should be the input tempfile,
         // which should be the output tempfile of the previous op
-        match &mut xor2.0[1] {
+        match &mut collected2[1] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output0_tmpfile2);
@@ -961,7 +971,7 @@ mod tests {
             }
         };
         // The last arg of the second op is another assigned output tempfile
-        let output1_tmpfile2 = match &mut xor2.0[1] {
+        let output1_tmpfile2 = match &mut collected2[1] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(),
@@ -980,7 +990,7 @@ mod tests {
         // The input file of the third op should be the tempfile output of the
         // second op, and the output file of the third op should be an assigned
         // tempfile.
-        let output2_tmpfile2 = match &mut xor2.0[2] {
+        let output2_tmpfile2 = match &mut collected2[2] {
             TestOp::SPO(_) => {
                 panic!("Expected third op to be a FunctionOperation");
             }
@@ -1003,7 +1013,7 @@ mod tests {
 
         // The penultimate arg of the third op should be the input tempfile,
         // which should be the output tempfile of the previous op
-        match &mut xor2.0[3] {
+        match &mut collected2[3] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output2_tmpfile2);
@@ -1018,7 +1028,7 @@ mod tests {
             }
         };
 
-        assert_eq!(xor2.0,  // almost xor.0 but with main directory changed
+        assert_eq!(collected2,  // almost `collected` but main directory changed
                    vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
                                                exe: "test-cmd".into(),
                                                args: ["-a",
@@ -1060,7 +1070,7 @@ mod tests {
     fn test_chain_empty() -> anyhow::Result<()> {
         let mut ops = ChainedOps::new("test empty chain");
         // [TC1]
-        let mut ex = TestCollector(vec![]);
+        let mut ex = TestCollector::new();
         let result = ops.execute(&mut ex, &Some("target/loc"));
         match result {
             Ok(ActualFile::NoActualFile) => (),
@@ -1068,7 +1078,8 @@ mod tests {
                          "Expected single static file 'final.out' but got {:?}",
                          result),
         };
-        assert_eq!(ex.0.len(), 0);
+        let collected = ex.0.into_inner();
+        assert_eq!(collected.len(), 0);
         Ok(())
     }
 
@@ -1091,7 +1102,7 @@ mod tests {
         ops.set_input_file(&FileArg::loc("real-in"));  // [TC8]
         ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
 
-        let mut ex = TestCollector(vec![]);
+        let mut ex = TestCollector::new();
         let result = execute_here(&mut ops, &mut ex);
         match result {
             Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
@@ -1100,9 +1111,10 @@ mod tests {
                          "Expected single static file 'final.out' but got {:?}",
                          result),
         };
-        assert_eq!(ex.0.len(), 1); // [TC2]
+        let collected = ex.0.into_inner();
+        assert_eq!(collected.len(), 1); // [TC2]
 
-        assert_eq!(ex.0,
+        assert_eq!(collected,
                    vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
                                                exe: "test-cmd".into(),
                                                args: ["-b",
@@ -1156,7 +1168,7 @@ mod tests {
         // No chain-level input or output files were set, so the individual
         // operation's settings should apply.  [TC10]
 
-        let mut ex = TestCollector(vec![]);
+        let mut ex = TestCollector::new();
         let result = ops.execute(&mut ex, &Some("target/loc"));
         match result {
             Ok(actual) => {
@@ -1172,10 +1184,12 @@ mod tests {
             },
             Err(e) => assert!(false, "Err result: {:?}", e),
         };
-        assert_eq!(ex.0.len(), 3);
+
+        let mut collected = ex.0.into_inner();
+        assert_eq!(collected.len(), 3);
 
         // The last arg of the first op is an assigned output tempfile
-        let output0_tmpfile = match &mut ex.0[0] {
+        let output0_tmpfile = match &mut collected[0] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(),
@@ -1192,7 +1206,7 @@ mod tests {
 
         // The penultimate arg of the second op should be the input tempfile,
         // which should be the output tempfile of the previous op
-        match &mut ex.0[1] {
+        match &mut collected[1] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output0_tmpfile);  // [TC3]
@@ -1202,7 +1216,7 @@ mod tests {
             }
         };
         // The last arg of the second op is another assigned output tempfile
-        let output1_tmpfile = match &mut ex.0[1] {
+        let output1_tmpfile = match &mut collected[1] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert!(!outf.exists(),
@@ -1219,7 +1233,7 @@ mod tests {
 
         // The output file of the third (and last) op should be as specified by
         // the individual op.
-        match &mut ex.0[2] {
+        match &mut collected[2] {
             TestOp::SPO(re) => {
                 let outf = PathBuf::from(&re.args.last().unwrap());
                 assert_eq!(outf, PathBuf::from("final.out"));  // [TC10]
@@ -1235,7 +1249,7 @@ mod tests {
 
         // The penultimate arg of the third (and last) op should be the input
         // tempfile, which should be the output tempfile of the previous op
-        match &mut ex.0[2] {
+        match &mut collected[2] {
             TestOp::SPO(re) => {
                 let inpf = PathBuf::from(&re.args[re.args.len()-2]);
                 assert_eq!(inpf, output1_tmpfile);  // [TC3]
@@ -1250,7 +1264,7 @@ mod tests {
             }
         };
 
-        assert_eq!(ex.0,
+        assert_eq!(collected,
                    vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
                                                exe: "test-cmd".into(),
                                                args: ["-a",

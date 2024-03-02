@@ -17,10 +17,10 @@ pub trait OpInterface {
     /// used for user-presentation identification purposes.
     fn set_label(&mut self, new_label: &str) -> &mut Self;
 
-    /// Executes this command in a subprocess in the specified directory.  The
-    /// input and output files will be determined and added to the command-line
-    /// as indicated by their `NamedFile` values.  The successful result specifies
-    /// the output file written (if any).
+    /// Executes this command in a subprocess in the specified directory (via the
+    /// OsRun execution provided).  The input and output files will be determined
+    /// and added to the command-line as indicated by their `NamedFile` values.
+    /// The successful result specifies the output file written (if any).
     ///
     /// The target directory in which to execute the command(s) is specified by
     /// the input cwd parameter; if the directory for this operation has been
@@ -71,15 +71,18 @@ pub trait OpInterface {
     /// internal lock to ensure that only one execution of a specific operation
     /// (or operation chain) can be performed at a time (although different
     /// operation instances _can_ be performed in parallel).
+    ///
+    /// The actual execution is performed by calling the provided `executor`
+    /// implementing the [OsRun] trait.
 
-    fn execute<Exec, P>(&mut self, executor: &mut Exec, cwd: &Option<P>)
+    fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
         where P: AsRef<Path>, Exec: OsRun;
 }
 
 /// Convenience routine to execute an operation with a given [crate::Executor] in
 /// the current directory.
-pub fn execute_here<Op, Exec>(op: &mut Op, executor: &mut Exec)
+pub fn execute_here<Op, Exec>(op: &mut Op, executor: &Exec)
                               -> anyhow::Result<ActualFile>
 where Exec: OsRun, Op: OpInterface
 {

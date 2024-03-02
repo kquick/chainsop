@@ -85,7 +85,7 @@ impl ActualFile {
 /// list.  This also returns the file; the file may be a temporary file
 /// object which will delete the file at the end of its lifetime, so the
 /// returned value should be held until the file is no longer needed.
-pub fn setup_file<Exec, E>(executor: &mut Exec,
+pub fn setup_file<Exec, E>(executor: &Exec,
                            candidate: &FileArg,
                            on_missing: E) -> anyhow::Result<ActualFile>
 where E: Fn() -> anyhow::Result<ActualFile>,
@@ -116,7 +116,7 @@ where E: Fn() -> anyhow::Result<ActualFile>,
 }
 
 
-fn with_globbed_matches<Exec, Do>(executor: &mut Exec,
+fn with_globbed_matches<Exec, Do>(executor: &Exec,
                                   in_dir: &Path,
                                   for_glob: &str,
                                   mut do_with: Do)

@@ -69,7 +69,7 @@ impl FunctionOperation {
     }
 
     fn run_with_files<Exec, P>(&self,
-                               executor: &mut Exec,
+                               executor: &Exec,
                                cwd: &Option<P>,
                                inpfiles: ActualFile,
                                outfile: ActualFile)
@@ -119,7 +119,7 @@ impl OpInterface for FunctionOperation {
         self
     }
 
-    fn execute<Exec, P>(&mut self, executor: &mut Exec, cwd: &Option<P>)
+    fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
     where P: AsRef<Path>, Exec: OsRun
     {
@@ -148,10 +148,11 @@ mod tests {
 
     use super::*;
     use crate::execution::*;
+    use std::cell::RefCell;
     use std::rc::Rc;
     use std::ffi::OsString;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     struct RunFunc{
         fname: String,
         inpfiles: Vec<PathBuf>,
@@ -159,10 +160,15 @@ mod tests {
         dir: Option<PathBuf>
     }
     #[derive(Debug, PartialEq)]
-    struct CallCollector(Vec<RunFunc>);
+    struct CallCollector(RefCell<Vec<RunFunc>>);
+    impl CallCollector {
+        pub fn new() -> CallCollector {
+            CallCollector(RefCell::new(vec![]))
+        }
+    }
 
     impl OsRun for CallCollector {
-        fn run_executable(&mut self,
+        fn run_executable(&self,
                           label: &str,
                           exe_file: &Path,
                           _args: &Vec<OsString>,
@@ -171,25 +177,26 @@ mod tests {
             RunError(anyhow::anyhow!("run_executable {:?}: {:?} not implemented for CallCollector",
                                      label, exe_file))
         }
-        fn run_function(&mut self,
+        fn run_function(&self,
                         name : &str,
                         _call : &Rc<dyn Fn(&Path, &ActualFile, &ActualFile) -> anyhow::Result<()>>,
                         inpfiles: &ActualFile,
                         outfile: &ActualFile,
                         fromdir: &Option<PathBuf>) -> OsRunResult
         {
-            self.0.push(RunFunc{ fname: name.to_string(),
-                                 inpfiles: inpfiles.to_paths::<PathBuf>(&None).unwrap(),
-                                 outfile: outfile.to_path::<PathBuf>(&None).ok(),
-                                 dir: fromdir.clone()
+            self.0.borrow_mut()
+                .push(RunFunc{ fname: name.to_string(),
+                               inpfiles: inpfiles.to_paths::<PathBuf>(&None).unwrap(),
+                               outfile: outfile.to_path::<PathBuf>(&None).ok(),
+                               dir: fromdir.clone()
             });
             Good
         }
-        fn glob_search(&mut self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
+        fn glob_search(&self, _globpat: &String) -> anyhow::Result<Vec<PathBuf>>
         {
             Err(anyhow::anyhow!("glob_search not implemented for CallCollector"))
         }
-        fn mk_tempfile(&mut self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
+        fn mk_tempfile(&self, suffix: &String) -> anyhow::Result<tempfile::NamedTempFile>
         {
             Executor::DryRun.mk_tempfile(suffix)
         }
@@ -210,7 +217,7 @@ mod tests {
             .set_output_file(&FileArg::temp(".out"))
             .clone();
 
-        let mut executor = CallCollector(vec![]);
+        let mut executor = CallCollector::new();
         let result = execute_here(&mut op, &mut executor);
         assert!(
             match result {
@@ -218,16 +225,18 @@ mod tests {
                     tf.path().exists(),
                 _ => false
             }, "Unexpected result: {:?}", result);
-        assert_eq!(executor.0.len(), 1);
-        assert_eq!(executor.0[0].fname, "f1");
+        let mut collected = executor.0.clone().into_inner();
+        assert_eq!(collected .len(), 1);
+        assert_eq!(collected [0].fname, "f1");
         assert!(
-            match &executor.0[0].outfile {
+            match &collected [0].outfile {
                 Some(pb) => pb.exists(),
                 _ => false
-            }, "Unexpected outfiles: {:?}", executor.0[0].outfile);
-        let out1 = &executor.0[0].outfile.clone().unwrap();
-        executor.0[0].outfile = None;
-        assert_eq!(executor.0,
+            }, "Unexpected outfiles: {:?}", collected [0].outfile);
+        let out1 = &collected [0].outfile.clone().unwrap();
+        collected[0].outfile = None;
+        executor.0.borrow_mut()[0].outfile = None;
+        assert_eq!(collected,
                    vec![ RunFunc { fname: "f1".into(),
                                    inpfiles: vec![PathBuf::from("inpfile.txt")],
                                    outfile: None,
@@ -236,7 +245,7 @@ mod tests {
                    ]);
 
         // Re-run op to make sure it can be re-used
-        let mut ex2 = CallCollector(vec![]);
+        let mut ex2 = CallCollector::new();
         let result2 = execute_here(&mut op, &mut ex2);
         assert!(
             match result2 {
@@ -244,14 +253,15 @@ mod tests {
                     tf.path().exists(),
                 _ => false
             }, "Unexpected result: {:?}", result2);
-        assert_eq!(ex2.0.len(), 1);
-        assert_eq!(ex2.0[0].fname, "f1");
+        let collected2 = ex2.0.borrow().clone();
+        assert_eq!(collected2.len(), 1);
+        assert_eq!(collected2[0].fname, "f1");
         assert!(
-            match &ex2.0[0].outfile {
+            match &collected2[0].outfile {
                 Some(pb) => pb.exists() && pb != out1,
                 _ => false
-            }, "Unexpected outfiles: {:?}", ex2.0[0].outfile);
-        ex2.0[0].outfile = None;
+            }, "Unexpected outfiles: {:?}", collected2[0].outfile);
+        ex2.0.borrow_mut()[0].outfile = None;
 
         assert_eq!(executor, ex2);
     }
