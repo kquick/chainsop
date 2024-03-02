@@ -1301,4 +1301,48 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_chain_reldirs() -> anyhow::Result<()> {
+        let mut ops = ChainedOps::new("test chain single");
+        ops.set_dir("here");
+
+        let exe = Executable::new(&"test-cmd",
+                                  ExeFileSpec::Append,
+                                  ExeFileSpec::Append);
+        ops.push_op(SubProcOperation::new(&exe)  // [TC2]
+                    // Set the input file.  The chain should *not* override this
+                    // because the chain itself is not given an input file.  The
+                    // usual expectation is that the chain *will* be given an
+                    // input file, but this verifies the behavior of the unusual
+                    // scenario.
+                    .set_input_file(&FileArg::loc("override-in"))
+                    .set_output_file(&FileArg::loc("override-out"))
+                    .push_arg("-b"));
+        ops.set_input_file(&FileArg::loc("real-in"));  // [TC8]
+        ops.set_output_file(&FileArg::loc("real-out")); // [TC6]
+
+        let mut ex = TestCollector::new();
+        let result = execute_here(&mut ops, &mut ex);
+        match result {
+            Ok(ActualFile::SingleFile(FileRef::StaticFile(sf))) =>
+                assert_eq!(sf, PathBuf::from("real-out")), // [TC6]
+            _ => assert!(false,
+                         "Expected single static file 'final.out' but got {:?}",
+                         result),
+        };
+        let collected = ex.0.into_inner();
+        assert_eq!(collected.len(), 1); // [TC2]
+
+        assert_eq!(collected,
+                   vec![ TestOp::SPO(RunExec { name: "test-cmd".into(),
+                                               exe: "test-cmd".into(),
+                                               args: ["-b",
+                                                      "real-in", // [TC8]
+                                                      "real-out", // [TC6]
+                                                      // output file removed above
+                                               ].map(Into::<OsString>::into).to_vec(),
+                                               dir: Some("here".into())}), // [TC13]
+                   ]);
+        Ok(())
+    }
 }
