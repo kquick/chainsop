@@ -110,13 +110,12 @@ impl RunnableOp {
 ///
 /// General notes about structure organization:
 ///
-///   The ChainedOps is the core structure that contains the list of
-///   operations that should be chained together, along with the initial input
-///   file and final output file.
+///   The core structure that contains the list of operations that should be
+///   chained together, along with the initial input file and final output file.
 ///
-///   When adding an operation to ChainedOps (via .push_op()) the
+///   When adding an operation to [ChainedOps] (via `.push_op()`) the
 ///   return value should allow subsequent examination/manipulation of that
-///   specific operation in the chain (the ChainedOpRef struct).
+///   specific operation in the chain (the [ChainedOpRef] struct).
 //    To support this access and honor Rust's ownership rules, this means that
 //   the result references the underlying ChainedOpsInternals via a
 //   reference counted (Rc) cell (RefCell) to maintain a single copy via the Rc
@@ -130,25 +129,27 @@ impl RunnableOp {
 ///
 ///   The typical API usage:
 ///
-///    let all_ops = ChainedOps::new()
+///    ```text
+///    let all_ops = ChainedOps::new("my ops");
 ///    let op1 = all_ops.push_op(
 ///               SubProcOperation::new("command",
 ///                                     ExeFileSpec::...,
-///                                     ExeFileSpec::...))
+///                                     ExeFileSpec::...));
 ///    let op2 = all_ops.push_op(
 ///               SubProcOperation::new("next-command",
 ///                                     ExeFileSpec::...,
-///                                     ExeFileSpec::...))
+///                                     ExeFileSpec::...));
 ///    ...
-///    op1.push_arg("-x")
-///    op2.push_arg("-f")
-///    op2.push_arg(filename)
-///    op2.disable()
+///    op1.push_arg("-x");
+///    op2.push_arg("-f");
+///    op2.push_arg(filename);
+///    op2.disable();
 ///    ...
-///    all_ops.set_input_file(input_filename)
-///    all_ops.set_output_file(output_filename)
+///    all_ops.set_input_file(input_filename);
+///    all_ops.set_output_file(output_filename);
 ///    let mut executor = Executor::NormalRun;
-///    all_ops.execute_here(&mut executor)?;
+///    all_ops.execute(&mut executor, &None)?;
+///    ```
 ///
 pub struct ChainedOps {
 
@@ -196,10 +197,10 @@ struct ChainedOpsInternals {
 }
 
 
-/// This is returned when a RunnableOp is added to the ChainedOps/ChainedIntOps
-/// and serves as a proxy for the RunnableOp as it exists in the chain.  This
-/// supports additional customization actions on the contained RunnableOp via the
-/// FilesPrep trait.
+/// This is returned when an operation is added to the [ChainedOps] structure and
+/// serves as a proxy for that operation as it exists in the chain.  This
+/// supports additional customization actions on the contained operation via the
+/// [FilesPrep] trait.
 #[derive(Clone,Debug)]
 pub struct ChainedOpRef {
     opidx : usize,
@@ -361,8 +362,8 @@ impl OpInterface for ChainedOps
     ///
     /// The directory parameter specifies the default directory from which the
     /// chained operations will be performed.  Each chained operation might
-    /// operate from a separate directory if the SubProcOperation::set_dir() or
-    /// ChainedOpRef::set_dir() function has been called for this operation,
+    /// operate from a separate directory if the [SubProcOperation::set_dir()] or
+    /// [ChainedOpRef::set_dir()] function has been called for this operation,
     /// which overrides the default directory passed to this command.
     fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
