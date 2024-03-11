@@ -142,9 +142,10 @@ impl OsRun for Executor {
                                         if !out.status.success() {
                                             OsRunResult::ExecError(
                                                 out.status.code(),
-                                                String::from_utf8_lossy(&out.stderr).into_owned());
+                                                String::from_utf8_lossy(&out.stderr).into_owned())
+                                        } else {
+                                            OsRunResult::Good
                                         }
-                                        OsRunResult::Good
                                     }
                                     Err(e) => OsRunResult::ExecFailed(e)
                                 }
