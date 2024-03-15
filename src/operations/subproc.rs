@@ -7,7 +7,7 @@ use crate::filehandling::*;
 use crate::executable::*;
 use crate::errors::*;
 use crate::operations::generic::*;
-use crate::execution::{OsRun, OsRunResult::*};
+use crate::execution::{OsRun, OsRunResult::*, EnvSpec};
 
 
 
@@ -21,9 +21,9 @@ pub struct SubProcOperation {
     name : String,
     exec : Executable,
     args : Vec<OsString>,
+    env : EnvSpec,
     files : FileTransformation,
 }
-
 
 
 impl SubProcOperation {
@@ -39,6 +39,7 @@ impl SubProcOperation {
                     .unwrap_or("{an-exe}".to_string())),
             exec : executing.clone(),
             args : get_base_args(&executing).iter().map(|x| x.into()).collect(),
+            env : EnvSpec::StdEnv,
             files : FileTransformation::new(),
         }
     }
@@ -46,7 +47,7 @@ impl SubProcOperation {
 
     /// Changes the name of the command to execute.
     #[inline]
-    pub fn set_executable<T>(&mut self, exe: T) -> &mut SubProcOperation
+    pub fn set_executable<T>(&mut self, exe: T) -> &mut Self
     where T: Into<PathBuf>
     {
         self.exec = self.exec.set_exe(exe);
@@ -56,6 +57,102 @@ impl SubProcOperation {
             .into_os_string()
             .into_string()
             .unwrap_or("{an-exe}".to_string());
+        self
+    }
+
+
+    /// Clears all environment variable settings for the environment in which
+    /// this operation executes.  Any previous environment variable settings are
+    /// discarded.
+    ///
+    /// By default, the current environment is inherited by the operation.
+    pub fn clear_env(&mut self) -> &mut Self
+    {
+        self.env = EnvSpec::BlankEnv;
+        self
+    }
+
+    /// Returns the current environment settings for this operation.
+    pub(crate) fn get_full_env(&self) -> EnvSpec
+    {
+        self.env.clone()
+    }
+
+    /// Sets the entirety of the current operations environment settings.
+    pub(crate) fn set_full_env(&mut self, new_env: &EnvSpec) -> &mut Self
+    {
+        self.env = new_env.clone();
+        self
+    }
+
+    /// Uses the specified environment as the base environment setting for
+    /// executing the operation.  This can be used as a form of inheritance, as
+    /// is done with the chained_ops: the chained_ops can have an environment
+    /// setting that is then modified by the environment settings for this
+    /// particular operations by calling this method with the chained_op
+    /// environment.
+    pub(crate) fn set_base_env(&mut self, base_env: &EnvSpec) -> &mut Self
+    {
+        self.env = self.env.set_base(&base_env);
+        self
+    }
+
+    /// Specifies an environment variable value to be set in the environment for
+    /// executing this operation.  This can be used multiple times to set
+    /// multiple environment variables; subsequent settings of the same variable
+    /// will override previous settings.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to set for that variable.
+    pub fn set_env<N,V>(&mut self, var_name: N, var_value: V) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>
+    {
+        self.env = self.env.add(var_name, var_value);
+        self
+    }
+
+    /// Extends the operations environment by prepending a value to an
+    /// environment variable.  If the environment variable was not previously
+    /// set, this becomes the new value for that variable.  This can be used
+    /// multiple times to extend the environment variable with multiple values.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to prepend to that variable, and the third value is
+    /// the separator between the prepended value and the existing value.
+    pub fn prepend_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        self.env = self.env.prepend(var, value, sep);
+        self
+    }
+
+    /// Extends the operations environment by appending a value to an environment
+    /// variable.  If the environment variable was not previously set, this
+    /// becomes the new value for that variable.  This can be used multiple times
+    /// to extend the environment variable with multiple values.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to append to that variable, and the third value is
+    /// the separator between the appended value and the existing value.
+    pub fn append_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        self.env = self.env.append(var, value, sep);
+        self
+    }
+
+    /// Removes the specified environment variable from the environment in which
+    /// the operation executes.  Has no effect but does not fail if the
+    /// environment variable does not exist.
+    pub fn unset_env<N>(&mut self, var_name: N) -> &mut Self
+    where N: Into<String>
+    {
+        self.env = self.env.rmv(var_name);
         self
     }
 
@@ -235,12 +332,14 @@ impl SubProcOperation {
                 None => self.files.in_dir.clone(),
             };
         match executor.run_executable(&self.label(),
-                                      &self.exec.exe_file, &args, &fromdir) {
+                                      &self.exec.exe_file, &args,
+                                      &self.env,
+                                      &fromdir) {
             Good => Ok(outfile),
             RunError(e) =>
                 Err(anyhow::Error::new(
                     ChainsopError::ErrorExecuting(format!("{:?}", self.exec),
-                                                 args, e, fromdir))),
+                                                  args, e, fromdir))),
             ExecFailed(e) =>
                 Err(anyhow::Error::new(
                     ChainsopError::ErrorCmdSetup(format!("{:?}", self.exec),
@@ -297,6 +396,7 @@ mod tests {
         name: String,
         exe: PathBuf,
         args: Vec<OsString>,
+        env: EnvSpec,
         dir: Option<PathBuf>
     }
     struct ArgCollector(RefCell<Vec<RunExec>>);
@@ -311,12 +411,14 @@ mod tests {
                           label: &str,
                           exe_file: &Path,
                           args: &Vec<OsString>,
+                          exe_env: &EnvSpec,
                           fromdir: &Option<PathBuf>) -> OsRunResult
         {
             self.0.borrow_mut()
                 .push(RunExec{ name: String::from(label),
                                exe: PathBuf::from(exe_file),
                                args: args.clone(),
+                               env: exe_env.clone(),
                                dir: fromdir.clone()
             });
             Good
@@ -349,8 +451,16 @@ mod tests {
             .set_input_file(&FileArg::loc("inpfile.txt"))
             .set_output_file(&FileArg::temp(".out"))
             .push_arg("-a")
+            .clear_env()
+            .set_env("env1", "env1val")
             .push_arg("a-arg-value")
+            .set_env("env2", "env2val")
             .push_arg("-b")
+            .prepend_env("env2", "env2first", ";++")
+            .set_env("env3", "env3val")
+            .append_env("env2", "env2last", ":")
+            .unset_env("wild")
+            .unset_env("env1")
             .clone();
 
         let executor = ArgCollector::new();
@@ -375,6 +485,14 @@ mod tests {
                                           "-b",
                                           "inpfile.txt",
                                    ].map(Into::<OsString>::into).to_vec(),
+                                   env: EnvSpec::BlankEnv
+                                   .add("env1", "env1val")
+                                   .add("env2", "env2val")
+                                   .prepend("env2", "env2first", ";++")
+                                   .add("env3", "env3val")
+                                   .append("env2", "env2last", ":")
+                                   .rmv("wild")
+                                   .rmv("env1"),
                                    dir: None,
                    },
                    ]);
@@ -414,6 +532,7 @@ mod tests {
                                           "inpfile.txt",
                                           "inp2.foo",
                                    ].map(Into::<OsString>::into).to_vec(),
+                                   env: EnvSpec::StdEnv,
                                    dir: Some(PathBuf::from("/other/location/sub/dir")),
                    }]);
 
@@ -437,6 +556,7 @@ mod tests {
                                           "inpfile.txt",
                                           "inp2.foo",
                                    ].map(Into::<OsString>::into).to_vec(),
+                                   env: EnvSpec::StdEnv,
                                    dir: Some(PathBuf::from("loc/sub/dir")),
                    }]);
     }
@@ -463,6 +583,7 @@ mod tests {
                                    exe: "simple".into(),
                                    args: ["-a",
                                    ].map(Into::<OsString>::into).to_vec(),
+                                   env: EnvSpec::StdEnv,
                                    dir: Some(PathBuf::from("sub/dir")),
                    }]);
     }

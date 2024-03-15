@@ -12,7 +12,7 @@ use crate::errors::*;
 use crate::operations::generic::*;
 use crate::operations::subproc::*;
 use crate::operations::function::*;
-use crate::execution::{OsRun};
+use crate::execution::{OsRun, EnvSpec};
 
 
 /// Each entry in Chained operations can refer to either a sub-process operation
@@ -34,10 +34,22 @@ macro_rules! runnable_passthru_call {
             Self::Call(fp) => fp.$method($($arg,)*),
         }
     };
-    (mutable $me:ident, $method:ident with $arg:ident) => {
+    ($me:ident, exec-only $default:expr, or $method:ident with $($arg:ident),*) => {
+        match $me {
+            Self::Exec(sp) => sp.$method($($arg,)*),
+            Self::Call(_) => $default,
+        }
+    };
+    (mutable $me:ident, $method:ident with $($arg:ident),*) => {
         match *$me {
-            Self::Exec(ref mut sp) => { sp.$method($arg); },
-            Self::Call(ref mut fp) => { fp.$method($arg); },
+            Self::Exec(ref mut sp) => { sp.$method($($arg,)*); },
+            Self::Call(ref mut fp) => { fp.$method($($arg,)*); },
+        }
+    };
+    (mutable $me:ident exec-only $method:ident with $($arg:ident),*) => {
+        match *$me {
+            Self::Exec(ref mut sp) => { sp.$method($($arg,)*); },
+            Self::Call(_) => {},
         }
     }
 }
@@ -50,10 +62,44 @@ macro_rules! runnable_op_passthru {
             self
         }
     };
+    ($method:ident exec-only with) => {
+        fn $method(&mut self) -> &mut Self
+        {
+            runnable_passthru_call!(mutable self exec-only $method with);
+            self
+        }
+    };
+    ($method:ident exec-only with $argty:ty) => {
+        fn $method(&mut self, arg: $argty) -> &mut Self
+        {
+            runnable_passthru_call!(mutable self exec-only $method with arg);
+            self
+        }
+    };
+    ($method:ident exec-only with $argty:ty, $argty2:ty) => {
+        fn $method(&mut self, arg: $argty, arg2: $argty2) -> &mut Self
+        {
+            runnable_passthru_call!(mutable self exec-only $method with arg, arg2);
+            self
+        }
+    };
+    ($method:ident exec-only with $argty:ty, $argty2:ty, $argty3:ty) => {
+        fn $method(&mut self, arg: $argty, arg2: $argty2, arg3: $argty3) -> &mut Self
+        {
+            runnable_passthru_call!(mutable self exec-only $method with arg, arg2, arg3);
+            self
+        }
+    };
     ($method:ident returning $rty:ty) => {
         fn $method(&self) -> $rty
         {
             runnable_passthru_call!(self, $method with)
+        }
+    };
+    ($method:ident exec-only returning $rty:ty := $default:expr) => {
+        fn $method(&self) -> $rty
+        {
+            runnable_passthru_call!(self, exec-only $default, or $method with)
         }
     }
 }
@@ -73,15 +119,8 @@ impl FilesPrep for RunnableOp {
 }
 
 impl OpInterface for RunnableOp {
-
-    fn label(&self) -> String {
-        runnable_passthru_call!(self, label with) // no args
-    }
-
-    fn set_label(&mut self, new_label: &str) -> &mut Self {
-        runnable_passthru_call!(mutable self, set_label with new_label);
-        self
-    }
+    runnable_op_passthru!(label returning String);
+    runnable_op_passthru!(set_label, &str);
 
     fn execute<Exec, P>(&mut self, executor: &Exec, cwd: &Option<P>)
                         -> anyhow::Result<ActualFile>
@@ -92,17 +131,15 @@ impl OpInterface for RunnableOp {
 }
 
 impl RunnableOp {
-    fn push_arg<T>(&mut self, arg: T) -> &mut Self
-    where T: Into<OsString>
-    {
-        match *self {
-            Self::Exec(ref mut sp) => { sp.push_arg(arg); },
-            Self::Call(_) => {
-                // No args supported for FunctionOperation; just ignore this.
-            },
-        };
-        self
-    }
+    runnable_op_passthru!(push_arg exec-only with OsString);
+    runnable_op_passthru!(clear_env exec-only with);
+    runnable_op_passthru!(set_env exec-only with String, String);
+    runnable_op_passthru!(prepend_env exec-only with String, String, String);
+    runnable_op_passthru!(append_env exec-only with String, String, String);
+    runnable_op_passthru!(unset_env exec-only with String);
+    runnable_op_passthru!(set_base_env exec-only with &EnvSpec);
+    runnable_op_passthru!(set_full_env exec-only with &EnvSpec);
+    runnable_op_passthru!(get_full_env exec-only returning EnvSpec := EnvSpec::StdEnv);
 }
 
 // ----------------------------------------------------------------------
@@ -185,6 +222,9 @@ struct ChainedOpsInternals {
     // The input and output files, and directory for the entire chain.
     files : FileTransformation,
 
+    // The env specification for the entire chain
+    chain_env: EnvSpec,
+
     // The activation state of entries in the chain (hash key == chain index).
     // If there is no hash entry for a specific chain entry, then that entry is
     // Active by default.
@@ -229,6 +269,7 @@ impl ChainedOps {
                     ChainedOpsInternals { name: label.clone().into(),
                                           chain : Vec::new(),
                                           files : FileTransformation::new(),
+                                          chain_env : EnvSpec::StdEnv,
                                           opstate : HashMap::new(),
                                           preset_inputs : Vec::new(),
 
@@ -280,6 +321,101 @@ impl ChainedOps {
                        chop : Rc::clone(&self.chops)
         }
     }
+
+    /// Clears all environment variable settings for the environment in which the
+    /// entire chain executes.  Any previous environment variable settings are
+    /// discarded.  Any environment settings on an individual operation in the
+    /// chain are an additive override to the settings here.
+    ///
+    /// By default, the current environment is inherited by the chain operations.
+    pub fn clear_env(&mut self) -> &mut Self
+    {
+        {
+            let mut ops: RefMut<_> = self.chops.borrow_mut();
+            ops.chain_env = EnvSpec::BlankEnv;
+        }
+        self
+    }
+
+    /// Specifies an environment variable value to be set in the environment for
+    /// executing this chain of operations.  This can be used multiple times to
+    /// set multiple environment variables; subsequent settings of the same
+    /// variable will override previous settings.  Any environment settings on an
+    /// individual operation in the chain are an additive override to the
+    /// settings here.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to set for that variable.
+    pub fn set_env<N,V>(&mut self, var_name: N, var_value: V) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chops.borrow_mut();
+            ops.chain_env = ops.chain_env.add(var_name, var_value);
+        }
+        self
+    }
+
+    /// Extends the chained operations environment by prepending a value to an
+    /// environment variable.  If the environment variable was not previously
+    /// set, this becomes the new value for that variable.  This can be used
+    /// multiple times to extend the environment variable with multiple values.
+    /// Any environment settings on an individual operation in the
+    /// chain are an additive override to the settings here.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to prepend to that variable, and the third value is
+    /// the separator between the prepended value and the existing value.
+    pub fn prepend_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chops.borrow_mut();
+            ops.chain_env = ops.chain_env.prepend(var, value, sep);
+        }
+        self
+    }
+
+    /// Extends the chained operations environment by appending a value to an
+    /// environment variable.  If the environment variable was not previously
+    /// set, this becomes the new value for that variable.  This can be used
+    /// multiple times to extend the environment variable with multiple values.
+    /// Any environment settings on an individual operation in the
+    /// chain are an additive override to the settings here.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to append to that variable, and the third value is
+    /// the separator between the appended value and the existing value.
+    pub fn append_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chops.borrow_mut();
+            ops.chain_env = ops.chain_env.append(var, value, sep);
+        }
+        self
+    }
+
+    /// Removes the specified environment variable from the environment in which
+    /// the chain of operations executes.  Has no effect but does not fail if the
+    /// environment variable does not exist.  Any environment settings on an
+    /// individual operation in the chain are an additive override to the
+    /// settings here.
+    pub fn unset_env<N>(&mut self, var_name: N) -> &mut Self
+    where N: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chops.borrow_mut();
+            ops.chain_env = ops.chain_env.rmv(var_name);
+        }
+        self
+    }
+
 }
 
 impl FilesPrep for ChainedOps
@@ -420,8 +556,9 @@ impl OpInterface for ChainedOps
         }
 
         let pinp = chops.preset_inputs.clone();
+        let chenv = chops.chain_env.clone();
         execute_chain(executor, &mut chops.chain, &pinp, &tgtdir,
-                      &mut enabled_opidxs)
+                      chenv, &mut enabled_opidxs)
     }
 }
 
@@ -429,11 +566,15 @@ fn execute_chain(executor: &impl OsRun,
                  chops: &mut Vec<RunnableOp>,
                  preset_inputs: &Vec<usize>,
                  cwd: &Option<PathBuf>,
+                 ch_env: EnvSpec,
                  mut op_idxs: &mut Vec<usize>) -> anyhow::Result<ActualFile>
 {
     let op_idx = op_idxs.pop().unwrap();
     let spo = &mut chops[op_idx];
+    let orig_env = spo.get_full_env();
+    spo.set_base_env(&ch_env);
     let outfile = spo.execute(executor, cwd)?;
+    spo.set_full_env(&orig_env);
     if op_idxs.is_empty() {
         // This was the last operation, execution of the chain is completed.
         return Ok(outfile);
@@ -470,7 +611,7 @@ fn execute_chain(executor: &impl OsRun,
             _ => { return Err(e); }
         },
     };
-    execute_chain(executor, chops, preset_inputs, cwd, &mut op_idxs)
+    execute_chain(executor, chops, preset_inputs, cwd, ch_env, &mut op_idxs)
 }
 
 /// This enumerates the possible active conditions for each operation in the
@@ -488,6 +629,97 @@ pub enum Activation {
 
 impl ChainedOpRef {
 
+    /// Clears all environment variable settings for the environment in which
+    /// this operation in the chain executes.  Any previous environment variable
+    /// settings are discarded.
+    ///
+    /// By default, the chain's environment is inherited by the operation.
+    pub fn clear_env(&mut self) -> &mut Self
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].clear_env();
+        }
+        self
+    }
+
+    /// Specifies an environment variable value to be set in the environment for
+    /// executing this operation in the chain.  This can be used multiple times
+    /// to set multiple environment variables; subsequent settings of the same
+    /// variable will override previous settings, including those from the
+    /// overall chain.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to set for that variable.
+    pub fn set_env<N,V>(&mut self, var_name: N, var_value: V) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].set_env(var_name.into(), var_value.into());
+        }
+        self
+    }
+
+    /// Extends the operations environment for this chained operation by
+    /// prepending a value to an environment variable.  If the environment
+    /// variable was not previously set, this becomes the new value for that
+    /// variable.  This can be used multiple times to extend the environment
+    /// variable with multiple values, including those from the overall chain.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to prepend to that variable, and the third value is
+    /// the separator between the prepended value and the existing value.
+    pub fn prepend_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].prepend_env(var.into(), value.into(),
+                                              sep.into());
+        }
+        self
+    }
+
+    /// Extends the operations environment for this operation in the chain by
+    /// appending a value to an environment variable.  If the environment
+    /// variable was not previously set, this becomes the new value for that
+    /// variable.  This can be used multiple times to extend the environment
+    /// variable with multiple values, including those from the overall chain.
+    ///
+    /// The first argument is the environment variable name and the second
+    /// argument is the value to append to that variable, and the third value is
+    /// the separator between the appended value and the existing value.
+    pub fn append_env<N,V,S>(&mut self, var: N, value: V, sep: S) -> &mut Self
+    where N: Into<String>,
+          V: Into<String>,
+          S: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].append_env(var.into(), value.into(),
+                                             sep.into());
+        }
+        self
+    }
+
+    /// Removes the specified environment variable from the environment in which
+    /// this chained operation executes.  Has no effect but does not fail if the
+    /// environment variable does not exist.
+    pub fn unset_env<N>(&mut self, var_name: N) -> &mut Self
+    where N: Into<String>
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].unset_env(var_name.into());
+        }
+        self
+    }
+
+
     /// Add an argument to this operation in the chain
     #[inline]
     pub fn push_arg<T>(&mut self, arg: T) -> &mut ChainedOpRef
@@ -495,7 +727,7 @@ impl ChainedOpRef {
     {
         {
             let mut ops: RefMut<_> = self.chop.borrow_mut();
-            ops.chain[self.opidx].push_arg(arg);
+            ops.chain[self.opidx].push_arg(arg.into());
         }
         self
     }
@@ -636,6 +868,8 @@ mod tests {
     // * [TC20] Verify chained ops set_dir does not affect filenames
     // * [TC21] Absolute chain directory overrides execute directory
     // * [TC22] Absolute chain directory combines with relative op directory
+    // * [TC23] Specified env settings are applied
+    // * [TC24] Individual op env settings supplement chain env settings
 
     use super::*;
     use std::cell::RefCell;
@@ -648,6 +882,7 @@ mod tests {
         name: String,
         exe: PathBuf,
         args: Vec<OsString>,
+        env: EnvSpec,
         dir: Option<PathBuf>
     }
     #[derive(Debug, PartialEq)]
@@ -674,12 +909,14 @@ mod tests {
                           label: &str,
                           exe_file: &Path,
                           args: &Vec<OsString>,
+                          exe_env: &EnvSpec,
                           fromdir: &Option<PathBuf>) -> OsRunResult
         {
             self.0.borrow_mut()
                 .push(TestOp::SPO(RunExec{ name: String::from(label),
                                            exe: PathBuf::from(exe_file),
                                            args: args.clone(),
+                                           env: exe_env.clone(),
                                            dir: fromdir.clone()
             }));
             OsRunResult::Good
@@ -738,6 +975,8 @@ mod tests {
         let mut ops = ChainedOps::new("test chain");
         ops.set_input_file(&FileArg::loc("orig.inp"));   // [TC9]
         ops.set_output_file(&FileArg::loc("final.out"));  // [TC7]
+        ops.set_env("GONE", "Long").append_env("SUB", "CLUB", ",")
+            .set_env("ZINC", "ALLOY");
 
         let exe = Executable::new(&"test-cmd",
                                   ExeFileSpec::Append,
@@ -746,9 +985,12 @@ mod tests {
             // set the input file, but the chain will override this
             .set_input_file(&FileArg::loc("inpfile.txt"))  // [TC9]
             .set_output_file(&FileArg::temp(".out")) // [TC16]
+            .prepend_env("SUB", "HUB", ":")
+            .unset_env("GONE")
             .push_arg("-a")
             .push_arg("a-arg-value")
             .push_arg("-b")
+            .append_env("SUB", "DUB", ";")
             .clone();
 
         ops.push_op(&op);  // [TC12]
@@ -904,6 +1146,11 @@ mod tests {
                                                       "other_inpfile", // [TC9]
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv
+                                               .append("SUB", "CLUB;DUB", ",") // [TC24]
+                                               .add("ZINC", "ALLOY")
+                                               .prepend("SUB", "HUB", ":")
+                                               .rmv("GONE"), // [TC24]
                                                dir: Some(PathBuf::from("target/loc"))}), // [TC12]
                          TestOp::SPO(RunExec { name: "cmd2".into(),
                                                exe: "cmd2".into(),
@@ -914,6 +1161,10 @@ mod tests {
                                                       // input file removed above
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv  // [TC23]
+                                               .add("GONE", "Long")
+                                               .append("SUB", "CLUB", ",")
+                                               .add("ZINC", "ALLOY"),
                                                dir: Some(PathBuf::from("target/loc/.build"))}),
                          // [TC4]
                          TestOp::FO(RunFunc { fname: "a func".into(),
@@ -929,6 +1180,10 @@ mod tests {
                                                       // input file removed above
                                                       "out:\"final.out\"", // [TC7], [TC17]
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv  // [TC23]
+                                               .add("GONE", "Long")
+                                               .append("SUB", "CLUB", ",")
+                                               .add("ZINC", "ALLOY"),
                                                dir: Some(PathBuf::from("target/loc/.build"))}),
                    ]);
 
@@ -1041,6 +1296,11 @@ mod tests {
                                                       "other_inpfile",
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv
+                                               .append("SUB", "CLUB;DUB", ",") // [TC24]
+                                               .add("ZINC", "ALLOY")
+                                               .prepend("SUB", "HUB", ":")
+                                               .rmv("GONE"), // [TC24]
                                                dir: Some(PathBuf::from("/other"))}),
                          TestOp::SPO(RunExec { name: "cmd2".into(),
                                                exe: "cmd2".into(),
@@ -1051,6 +1311,10 @@ mod tests {
                                                       // input file removed above
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv  // [TC23]
+                                               .add("GONE", "Long")
+                                               .append("SUB", "CLUB", ",")
+                                               .add("ZINC", "ALLOY"),
                                                dir: Some(PathBuf::from("/other/.build"))}),
                          TestOp::FO(RunFunc { fname: "a func".into(),
                                               inpfiles: vec![], // input files removed above
@@ -1064,6 +1328,10 @@ mod tests {
                                                       // input file removed above
                                                       "out:\"final.out\"",
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv  // [TC23]
+                                               .add("GONE", "Long")
+                                               .append("SUB", "CLUB", ",")
+                                               .add("ZINC", "ALLOY"),
                                                dir: Some(PathBuf::from("/other/.build"))}),
                    ]);
         Ok(())
@@ -1125,6 +1393,7 @@ mod tests {
                                                       "real-out", // [TC6]
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv,
                                                dir: None}), // [TC11]
                    ]);
         Ok(())
@@ -1269,6 +1538,7 @@ mod tests {
                                                  "inpfile.txt",  // [TC10]
                                                  // output file removed above
                                           ].map(Into::<OsString>::into).to_vec(),
+                                          env: EnvSpec::StdEnv,
                                           dir: Some(PathBuf::from("/ops/run/here"))}), // [TC20]
                     TestOp::SPO(RunExec { name: "cmd2".into(),
                                           exe: "cmd2".into(),
@@ -1278,6 +1548,7 @@ mod tests {
                                                  // input file removed above
                                                  // output file removed above
                                           ].map(Into::<OsString>::into).to_vec(),
+                                          env: EnvSpec::StdEnv,
                                           dir: Some(PathBuf::from("/ops/run/here/sub/dir"))}), // [TC22]
                     TestOp::FO(RunFunc { fname: "fop".to_string(),
                                          inpfiles: vec![
@@ -1297,6 +1568,7 @@ mod tests {
                                                  "flop.done",   // [TC20]
                                                  "final.out",   // [TC10]
                                           ].map(Into::<OsString>::into).to_vec(),
+                                          env: EnvSpec::StdEnv,
                                           dir: Some(PathBuf::from("/abs/dir"))}),
                 ]);
         Ok(())
@@ -1342,6 +1614,7 @@ mod tests {
                                                       "real-out", // [TC6]
                                                       // output file removed above
                                                ].map(Into::<OsString>::into).to_vec(),
+                                               env: EnvSpec::StdEnv,
                                                dir: Some("here".into())}), // [TC13]
                    ]);
         Ok(())

@@ -172,6 +172,7 @@ mod tests {
                           label: &str,
                           exe_file: &Path,
                           _args: &Vec<OsString>,
+                          _exe_env: &EnvSpec,
                           _fromdir: &Option<PathBuf>) -> OsRunResult
         {
             RunError(anyhow::anyhow!("run_executable {:?}: {:?} not implemented for CallCollector",
