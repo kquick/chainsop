@@ -1,6 +1,6 @@
 [package]
 name = "chainsop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Library to facilitate executing a chained series of executable operations."
 authors = ["Kevin Quick <kq1quick@gmail.com>"]
 license = "MIT OR Apache-2.0"
