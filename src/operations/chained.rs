@@ -131,6 +131,7 @@ impl OpInterface for RunnableOp {
 }
 
 impl RunnableOp {
+    runnable_op_passthru!(set_executable exec-only with PathBuf);
     runnable_op_passthru!(push_arg exec-only with OsString);
     runnable_op_passthru!(clear_env exec-only with);
     runnable_op_passthru!(set_env exec-only with String, String);
@@ -628,6 +629,18 @@ pub enum Activation {
 }
 
 impl ChainedOpRef {
+
+    /// Changes the name of the command to execute if this is a
+    /// [SubProcOperation]; does nothing if this is a [FunctionOperation].
+    pub fn set_executable<T>(&mut self, exe: T) -> &mut Self
+    where T: Into<PathBuf>
+    {
+        {
+            let mut ops: RefMut<_> = self.chop.borrow_mut();
+            ops.chain[self.opidx].set_executable(exe.into());
+        }
+        self
+    }
 
     /// Clears all environment variable settings for the environment in which
     /// this operation in the chain executes.  Any previous environment variable
